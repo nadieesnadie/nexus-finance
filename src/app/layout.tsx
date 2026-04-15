@@ -8,6 +8,8 @@ export const metadata: Metadata = {
 
 import { LayoutDashboard, TrendingUp, Wallet, Settings } from "lucide-react";
 
+import { Providers } from "@/components/Providers";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -16,23 +18,25 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased overflow-hidden">
-        <div className="flex h-screen bg-black">
-          {/* Sidebar */}
-          <aside className="w-20 lg:w-64 border-r border-white/10 flex flex-col items-center lg:items-start p-6">
-            <div className="text-apple-blue font-bold text-2xl mb-12 hidden lg:block">NEXUS</div>
-            <nav className="flex flex-col gap-6 w-full">
-              <NavItem icon={<LayoutDashboard size={20} />} label="Dashboard" active />
-              <NavItem icon={<TrendingUp size={20} />} label="Markets" />
-              <NavItem icon={<Wallet size={20} />} label="Portfolio" />
-              <NavItem icon={<Settings size={20} />} label="Settings" />
-            </nav>
-          </aside>
-          
-          {/* Main View */}
-          <main className="flex-1 overflow-y-auto bg-[#050505]">
-            {children}
-          </main>
-        </div>
+        <Providers>
+          <div className="flex h-screen bg-black">
+            {/* Sidebar */}
+            <aside className="w-20 lg:w-64 border-r border-white/10 flex flex-col items-center lg:items-start p-6">
+              <div className="text-apple-blue font-bold text-2xl mb-12 hidden lg:block">NEXUS</div>
+              <nav className="flex flex-col gap-6 w-full">
+                <NavItem icon={<LayoutDashboard size={20} />} label="Dashboard" active />
+                <NavItem icon={<TrendingUp size={20} />} label="Markets" />
+                <NavItem icon={<Wallet size={20} />} label="Portfolio" />
+                <NavItem icon={<Settings size={20} />} label="Settings" />
+              </nav>
+            </aside>
+            
+            {/* Main View */}
+            <main className="flex-1 overflow-y-auto bg-[#050505]">
+              {children}
+            </main>
+          </div>
+        </Providers>
       </body>
     </html>
   );
