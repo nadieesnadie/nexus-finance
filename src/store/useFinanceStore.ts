@@ -13,7 +13,9 @@ interface CryptoData {
   high_24h: number;
   low_24h: number;
   ath: number;
+  ath_date: string;
   atl: number;
+  atl_date: string;
   circulating_supply: number;
   total_supply: number;
   max_supply: number;
