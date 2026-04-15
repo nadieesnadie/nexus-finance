@@ -3,10 +3,10 @@
 import { useEffect, useMemo } from 'react';
 import { useFinanceStore } from '@/store/useFinanceStore';
 import { 
-  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer 
+  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid 
 } from 'recharts';
 import { motion } from 'framer-motion';
-import { TrendingUp, DollarSign, Activity } from 'lucide-react';
+import { TrendingUp, DollarSign, Activity, ExternalLink } from 'lucide-react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { exportToCSV } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -17,12 +17,9 @@ export default function Dashboard() {
     history, setRange, currentRange, isHistoryLoading, error: storeError
   } = useFinanceStore();
 
-  // Polling para tiempo real
   useEffect(() => {
     fetchAssets();
-    const interval = setInterval(() => {
-      fetchAssets();
-    }, 60000); // Refrescar cada minuto
+    const interval = setInterval(() => fetchAssets(), 60000);
     return () => clearInterval(interval);
   }, [fetchAssets]);
 
@@ -30,21 +27,13 @@ export default function Dashboard() {
     assets.find(a => a.id === selectedAssetId) || assets[0],
   [assets, selectedAssetId]);
 
-  const chartData = useMemo(() => history, [history]);
-
-  // Cálculo de dominio para evitar "montañas" en stablecoins
   const yDomain = useMemo(() => {
     if (history.length === 0) return ['auto', 'auto'];
     const values = history.map(h => h.value);
     const min = Math.min(...values);
     const max = Math.max(...values);
-    const range = max - min;
-    
-    // Si la variación es menor al 0.5%, forzamos un margen para que se vea plano
-    if (range / min < 0.005) {
-      return [min * 0.999, max * 1.001];
-    }
-    return ['auto', 'auto'];
+    const padding = (max - min) * 0.1;
+    return [min - padding, max + padding];
   }, [history]);
 
   const handleExport = () => {
@@ -102,7 +91,7 @@ export default function Dashboard() {
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="glass rounded-3xl p-8 min-h-[500px] flex flex-col relative overflow-hidden"
+            className="glass rounded-3xl p-8 min-h-[550px] flex flex-col relative overflow-hidden"
           >
             {isHistoryLoading && (
               <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px] z-10 flex items-center justify-center">
@@ -116,7 +105,18 @@ export default function Dashboard() {
                   <img src={selectedAsset?.image} alt="" className="w-full h-full object-cover p-2" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold">{selectedAsset?.name}</h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-bold">{selectedAsset?.name}</h2>
+                    <a 
+                      href={`https://finance.yahoo.com/quote/${selectedAsset?.symbol.toUpperCase()}-USD`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-gray-500 hover:text-apple-blue transition-colors"
+                      title="Verify on Yahoo Finance"
+                    >
+                      <ExternalLink size={14} />
+                    </a>
+                  </div>
                   <p className={selectedAsset?.price_change_percentage_24h > 0 ? 'text-green-500' : 'text-red-500'}>
                     {selectedAsset?.price_change_percentage_24h > 0 ? '+' : ''}{selectedAsset?.price_change_percentage_24h?.toFixed(2)}% (24h)
                   </p>
@@ -137,26 +137,41 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="flex-1 w-full min-h-[300px]">
+            <div className="flex-1 w-full min-h-[350px]">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData}>
+                <AreaChart data={history} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#007AFF" stopOpacity={0.3}/>
                       <stop offset="95%" stopColor="#007AFF" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <XAxis dataKey="time" hide />
-                  <YAxis domain={yDomain} hide />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                  <XAxis 
+                    dataKey="time" 
+                    tickFormatter={(time) => format(new Date(time), currentRange === '1' ? 'HH:mm' : 'MMM dd')}
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#666', fontSize: 10 }}
+                    minTickGap={30}
+                  />
+                  <YAxis 
+                    domain={yDomain}
+                    orientation="right"
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(val) => val > 1000 ? `${(val/1000).toFixed(1)}k` : val.toFixed(2)}
+                    tick={{ fill: '#666', fontSize: 10 }}
+                  />
                   <Tooltip 
                     content={({ active, payload }) => {
                       if (active && payload && payload.length) {
                         return (
                           <div className="bg-[#111] border border-white/10 p-3 rounded-xl shadow-2xl">
                             <p className="text-gray-400 text-xs mb-1">
-                              {format(new Date(payload[0].payload.time), 'MMM dd, yyyy HH:mm')}
+                              {format(new Date(payload[0].payload.time), 'MMM dd, yyyy HH:mm:ss')}
                             </p>
-                            <p className="text-white font-bold">
+                            <p className="text-white font-bold text-lg">
                               ${payload[0].value?.toLocaleString(undefined, { 
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 6 

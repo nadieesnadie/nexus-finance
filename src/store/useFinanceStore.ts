@@ -64,7 +64,7 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
     }
     abortController = new AbortController();
     
-    set({ isHistoryLoading: true, currentRange: days });
+    set({ isHistoryLoading: true, currentRange: days, history: [] }); // Reset history here
     
     try {
       const response = await fetch(
