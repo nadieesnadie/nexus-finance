@@ -3,11 +3,10 @@
 import { useEffect, useMemo } from 'react';
 import { useFinanceStore } from '@/store/useFinanceStore';
 import { 
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
+  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer 
 } from 'recharts';
 import { motion } from 'framer-motion';
-
-import { ArrowUpRight, TrendingUp, DollarSign, Activity } from 'lucide-react';
+import { TrendingUp, DollarSign, Activity } from 'lucide-react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { exportToCSV } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -18,8 +17,13 @@ export default function Dashboard() {
     history, setRange, currentRange, isHistoryLoading, error: storeError
   } = useFinanceStore();
 
+  // Polling para tiempo real
   useEffect(() => {
     fetchAssets();
+    const interval = setInterval(() => {
+      fetchAssets();
+    }, 60000); // Refrescar cada minuto
+    return () => clearInterval(interval);
   }, [fetchAssets]);
 
   const selectedAsset = useMemo(() => 
@@ -27,6 +31,21 @@ export default function Dashboard() {
   [assets, selectedAssetId]);
 
   const chartData = useMemo(() => history, [history]);
+
+  // Cálculo de dominio para evitar "montañas" en stablecoins
+  const yDomain = useMemo(() => {
+    if (history.length === 0) return ['auto', 'auto'];
+    const values = history.map(h => h.value);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = max - min;
+    
+    // Si la variación es menor al 0.5%, forzamos un margen para que se vea plano
+    if (range / min < 0.005) {
+      return [min * 0.999, max * 1.001];
+    }
+    return ['auto', 'auto'];
+  }, [history]);
 
   const handleExport = () => {
     const dataToExport = assets.map(({ id, name, symbol, current_price, market_cap }) => ({
@@ -36,7 +55,12 @@ export default function Dashboard() {
   };
 
   if (loading && assets.length === 0) return (
-    <div className="flex items-center justify-center h-full text-white/50">Loading market data...</div>
+    <div className="flex items-center justify-center h-full text-white/50">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-12 h-12 border-4 border-apple-blue border-t-transparent rounded-full animate-spin"></div>
+        <p>Connecting to Market Data...</p>
+      </div>
+    </div>
   );
 
   const ranges = [
@@ -53,7 +77,7 @@ export default function Dashboard() {
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Market Overview</h1>
-          <p className="text-gray-500">Welcome back, David. Track your assets in real-time.</p>
+          <p className="text-gray-500">Live analytics for top digital assets.</p>
         </div>
         <div className="flex items-center gap-4">
           <button 
@@ -74,14 +98,12 @@ export default function Dashboard() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Chart Section */}
         <section className="lg:col-span-2 flex flex-col gap-8">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="glass rounded-3xl p-8 min-h-[500px] flex flex-col relative overflow-hidden"
           >
-            {/* Loading Overlay */}
             {isHistoryLoading && (
               <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px] z-10 flex items-center justify-center">
                 <div className="w-8 h-8 border-4 border-apple-blue border-t-transparent rounded-full animate-spin"></div>
@@ -96,12 +118,11 @@ export default function Dashboard() {
                 <div>
                   <h2 className="text-xl font-bold">{selectedAsset?.name}</h2>
                   <p className={selectedAsset?.price_change_percentage_24h > 0 ? 'text-green-500' : 'text-red-500'}>
-                    {selectedAsset?.price_change_percentage_24h.toFixed(2)}% (24h)
+                    {selectedAsset?.price_change_percentage_24h > 0 ? '+' : ''}{selectedAsset?.price_change_percentage_24h?.toFixed(2)}% (24h)
                   </p>
                 </div>
               </div>
 
-              {/* Range Selector */}
               <div className="flex bg-white/5 p-1 rounded-xl">
                 {ranges.map((r) => (
                   <button
@@ -125,14 +146,8 @@ export default function Dashboard() {
                       <stop offset="95%" stopColor="#007AFF" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <XAxis 
-                    dataKey="time" 
-                    hide 
-                  />
-                  <YAxis 
-                    domain={['auto', 'auto']} 
-                    hide 
-                  />
+                  <XAxis dataKey="time" hide />
+                  <YAxis domain={yDomain} hide />
                   <Tooltip 
                     content={({ active, payload }) => {
                       if (active && payload && payload.length) {
@@ -142,7 +157,10 @@ export default function Dashboard() {
                               {format(new Date(payload[0].payload.time), 'MMM dd, yyyy HH:mm')}
                             </p>
                             <p className="text-white font-bold">
-                              ${payload[0].value?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                              ${payload[0].value?.toLocaleString(undefined, { 
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 6 
+                              })}
                             </p>
                           </div>
                         );
@@ -165,15 +183,13 @@ export default function Dashboard() {
             </div>
           </motion.div>
 
-          {/* Key Metrics Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <MetricCard icon={<DollarSign size={18} />} label="Asset Price" value={`$${selectedAsset?.current_price.toLocaleString()}`} trend="Real-time" />
+            <MetricCard icon={<DollarSign size={18} />} label="Asset Price" value={`$${selectedAsset?.current_price?.toLocaleString()}`} trend="Live Refresh" />
             <MetricCard icon={<TrendingUp size={18} />} label="Market Cap" value={`$${(selectedAsset?.market_cap / 1e9).toFixed(1)}B`} trend="Global Rank" />
             <MetricCard icon={<Activity size={18} />} label="Volume (24h)" value="$1.2B" trend="High" />
           </div>
         </section>
 
-        {/* Assets List Section */}
         <aside className="flex flex-col gap-6">
           <div className="flex justify-between items-center">
             <h3 className="text-xl font-bold">Top Assets</h3>
@@ -197,9 +213,9 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="font-medium">${asset.current_price.toLocaleString()}</div>
+                  <div className="font-medium">${asset.current_price?.toLocaleString()}</div>
                   <div className={`text-xs ${asset.price_change_percentage_24h > 0 ? 'text-green-500' : 'text-red-500'}`}>
-                    {asset.price_change_percentage_24h > 0 ? '+' : ''}{asset.price_change_percentage_24h.toFixed(2)}%
+                    {asset.price_change_percentage_24h > 0 ? '+' : ''}{asset.price_change_percentage_24h?.toFixed(2)}%
                   </div>
                 </div>
               </motion.div>
