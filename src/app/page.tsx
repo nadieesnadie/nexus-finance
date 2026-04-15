@@ -8,8 +8,6 @@ import {
 import { motion } from 'framer-motion';
 
 import { ArrowUpRight, TrendingUp, DollarSign, Activity } from 'lucide-react';
-
-import { ArrowUpRight, TrendingUp, DollarSign, Activity } from 'lucide-react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { exportToCSV } from '@/lib/utils';
 import { format } from 'date-fns';
