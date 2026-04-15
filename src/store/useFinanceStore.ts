@@ -47,18 +47,18 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
   error: null,
   selectedAssetId: null,
   history: [],
-  currentRange: '7',
+  currentRange: '1',
   
   fetchAssets: async () => {
     try {
       const response = await fetch(
         'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=true&price_change_percentage=24h,7d'
       );
-      if (!response.ok) throw new Error('Nexus Terminal: API Rate Limit. Please wait.');
+      if (!response.ok) throw new Error('Terminal Error: API limit reached. Retrying...');
       const data = await response.json();
       
       const isInitialLoad = get().assets.length === 0;
-      set({ assets: data, loading: false });
+      set({ assets: data, loading: false, error: null });
       
       if (isInitialLoad && data.length > 0) {
         get().setSelectedAsset(data[0].id);
@@ -82,12 +82,20 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
     }
     
     try {
+      // Usar un pequeño delay si es XRP o inferior para evitar el rate limit masivo inicial
       const response = await fetch(
         `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=${daysParam}`,
         { signal: abortController.signal }
       );
       
-      if (!response.ok) throw new Error('History Data: Locked or Unavailable');
+      if (!response.ok) {
+        if (response.status === 429) {
+          set({ error: 'API Rate Limit: Waiting for slot...' });
+          return;
+        }
+        throw new Error('Data stream unavailable for this asset');
+      }
+
       const data = await response.json();
       const formattedHistory = data.prices.map((p: [number, number]) => ({
         time: p[0],
@@ -97,12 +105,12 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
       set({ history: formattedHistory, isHistoryLoading: false, error: null });
     } catch (err: any) {
       if (err.name === 'AbortError') return;
-      set({ isHistoryLoading: false });
+      set({ isHistoryLoading: false, error: 'Historical feed offline' });
     }
   },
 
   setSelectedAsset: (id: string) => {
-    set({ selectedAssetId: id });
+    set({ selectedAssetId: id, error: null });
     get().fetchHistory(id, get().currentRange);
   },
 
