@@ -29,7 +29,6 @@ interface FinanceStore {
   error: string | null;
   fetchAssets: () => Promise<void>;
   selectedAssetId: string | null;
-  selectedAssetDetails: any | null;
   history: { time: number; value: number }[];
   currentRange: string;
   isHistoryLoading: boolean;
@@ -42,11 +41,10 @@ let abortController: AbortController | null = null;
 
 export const useFinanceStore = create<FinanceStore>((set, get) => ({
   assets: [],
-  loading: false,
+  loading: true,
   isHistoryLoading: false,
   error: null,
-  selectedAssetId: 'bitcoin',
-  selectedAssetDetails: null,
+  selectedAssetId: null,
   history: [],
   currentRange: '7',
   
@@ -55,14 +53,14 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
       const response = await fetch(
         'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=15&page=1&sparkline=false&price_change_percentage=24h,7d'
       );
-      if (!response.ok) throw new Error('Market data unavailable');
+      if (!response.ok) throw new Error('Rate limit exceeded or API down');
       const data = await response.json();
       
-      if (get().assets.length === 0) {
-        set({ assets: data, loading: false });
+      const isInitialLoad = get().assets.length === 0;
+      set({ assets: data, loading: false });
+      
+      if (isInitialLoad && data.length > 0) {
         get().setSelectedAsset(data[0].id);
-      } else {
-        set({ assets: data });
       }
     } catch (err: any) {
       set({ error: err.message, loading: false });
@@ -75,31 +73,36 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
     
     set({ isHistoryLoading: true, currentRange: days, history: [] });
     
+    // Calcular días para YTD
+    let daysParam = days;
+    if (days === 'ytd') {
+      const startOfYear = new Date(new Date().getFullYear(), 0, 1);
+      const diff = new Date().getTime() - startOfYear.getTime();
+      daysParam = Math.floor(diff / (1000 * 60 * 60 * 24)).toString();
+    }
+    
     try {
       const response = await fetch(
-        `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=${days}`,
+        `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=${daysParam}`,
         { signal: abortController.signal }
       );
       
-      if (!response.ok) throw new Error('Failed to fetch history');
+      if (!response.ok) throw new Error('History unavailable');
       const data = await response.json();
       const formattedHistory = data.prices.map((p: [number, number]) => ({
         time: p[0],
         value: p[1]
       }));
       
-      set({ history: formattedHistory, isHistoryLoading: false });
+      set({ history: formattedHistory, isHistoryLoading: false, error: null });
     } catch (err: any) {
       if (err.name === 'AbortError') return;
       set({ isHistoryLoading: false });
     }
   },
 
-  setSelectedAsset: async (id: string) => {
+  setSelectedAsset: (id: string) => {
     set({ selectedAssetId: id });
-    const assets = get().assets;
-    const details = assets.find(a => a.id === id);
-    set({ selectedAssetDetails: details });
     get().fetchHistory(id, get().currentRange);
   },
 
