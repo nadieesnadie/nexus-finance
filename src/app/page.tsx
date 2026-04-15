@@ -15,7 +15,7 @@ import { format } from 'date-fns';
 export default function Dashboard() {
   const { 
     assets, fetchAssets, loading, selectedAssetId, setSelectedAsset, 
-    history, setRange, currentRange 
+    history, setRange, currentRange, isHistoryLoading, error: storeError
   } = useFinanceStore();
 
   useEffect(() => {
@@ -44,7 +44,7 @@ export default function Dashboard() {
     { label: '7D', value: '7' },
     { label: '1M', value: '30' },
     { label: '1Y', value: '365' },
-    { label: 'ALL', value: 'max' },
+    { label: 'Lifetime', value: 'max' },
   ];
 
   return (
@@ -66,14 +66,28 @@ export default function Dashboard() {
         </div>
       </header>
 
+      {storeError && (
+        <div className="bg-red-500/10 border border-red-500/20 text-red-500 p-4 rounded-2xl mb-8 flex justify-between items-center">
+          <span>{storeError}</span>
+          <button onClick={() => fetchAssets()} className="underline text-sm font-bold">Retry</button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Chart Section */}
         <section className="lg:col-span-2 flex flex-col gap-8">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="glass rounded-3xl p-8 min-h-[500px] flex flex-col"
+            className="glass rounded-3xl p-8 min-h-[500px] flex flex-col relative overflow-hidden"
           >
+            {/* Loading Overlay */}
+            {isHistoryLoading && (
+              <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px] z-10 flex items-center justify-center">
+                <div className="w-8 h-8 border-4 border-apple-blue border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            )}
+
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center overflow-hidden">
@@ -92,8 +106,9 @@ export default function Dashboard() {
                 {ranges.map((r) => (
                   <button
                     key={r.label}
+                    disabled={isHistoryLoading}
                     onClick={() => setRange(r.value)}
-                    className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${currentRange === r.value ? 'bg-apple-blue text-white shadow-lg' : 'text-gray-500 hover:text-white'}`}
+                    className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${currentRange === r.value ? 'bg-apple-blue text-white shadow-lg' : 'text-gray-500 hover:text-white'} ${isHistoryLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     {r.label}
                   </button>
@@ -124,7 +139,7 @@ export default function Dashboard() {
                         return (
                           <div className="bg-[#111] border border-white/10 p-3 rounded-xl shadow-2xl">
                             <p className="text-gray-400 text-xs mb-1">
-                              {format(new Date(payload[0].payload.time), 'MMM dd, HH:mm')}
+                              {format(new Date(payload[0].payload.time), 'MMM dd, yyyy HH:mm')}
                             </p>
                             <p className="text-white font-bold">
                               ${payload[0].value?.toLocaleString(undefined, { minimumFractionDigits: 2 })}
@@ -143,6 +158,7 @@ export default function Dashboard() {
                     fillOpacity={1} 
                     fill="url(#colorValue)" 
                     animationDuration={1000}
+                    isAnimationActive={!isHistoryLoading}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -168,8 +184,8 @@ export default function Dashboard() {
               <motion.div 
                 whileHover={{ x: 4 }}
                 key={asset.id}
-                onClick={() => setSelectedAsset(asset.id)}
-                className={`p-4 rounded-2xl cursor-pointer transition-all flex justify-between items-center ${selectedAssetId === asset.id ? 'bg-apple-blue/20 border border-apple-blue/30' : 'hover:bg-white/5 border border-transparent'}`}
+                onClick={() => !isHistoryLoading && setSelectedAsset(asset.id)}
+                className={`p-4 rounded-2xl cursor-pointer transition-all flex justify-between items-center ${selectedAssetId === asset.id ? 'bg-apple-blue/20 border border-apple-blue/30' : 'hover:bg-white/5 border border-transparent'} ${isHistoryLoading ? 'opacity-80' : ''}`}
               >
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center overflow-hidden">

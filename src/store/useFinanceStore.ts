@@ -19,14 +19,18 @@ interface FinanceStore {
   selectedAssetId: string | null;
   history: { time: number; value: number }[];
   currentRange: string;
+  isHistoryLoading: boolean;
   setSelectedAsset: (id: string) => void;
   setRange: (range: string) => void;
   fetchHistory: (id: string, days: string) => Promise<void>;
 }
 
+let abortController: AbortController | null = null;
+
 export const useFinanceStore = create<FinanceStore>((set, get) => ({
   assets: [],
   loading: false,
+  isHistoryLoading: false,
   error: null,
   selectedAssetId: 'bitcoin',
   history: [],
@@ -42,26 +46,44 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
       const data = await response.json();
       set({ assets: data, loading: false });
       
-      // Fetch initial history for selected asset
-      get().fetchHistory('bitcoin', '7');
+      // Fetch initial history
+      get().fetchHistory(data[0].id, '7');
     } catch (err) {
       set({ error: (err as Error).message, loading: false });
     }
   },
 
   fetchHistory: async (id: string, days: string) => {
+    // Cancel previous request if any
+    if (abortController) {
+      abortController.abort();
+    }
+    abortController = new AbortController();
+    
+    set({ isHistoryLoading: true, currentRange: days });
+    
     try {
       const response = await fetch(
-        `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=${days}`
+        `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=${days}`,
+        { signal: abortController.signal }
       );
+      
+      if (!response.ok) {
+        if (response.status === 429) throw new Error('Rate limit exceeded. Please wait.');
+        throw new Error('Failed to fetch history');
+      }
+
       const data = await response.json();
       const formattedHistory = data.prices.map((p: [number, number]) => ({
         time: p[0],
         value: p[1]
       }));
-      set({ history: formattedHistory, currentRange: days });
-    } catch (err) {
+      
+      set({ history: formattedHistory, isHistoryLoading: false, error: null });
+    } catch (err: any) {
+      if (err.name === 'AbortError') return;
       console.error('History fetch error:', err);
+      set({ isHistoryLoading: false, error: err.message });
     }
   },
 
