@@ -21,6 +21,7 @@ interface CryptoData {
   max_supply: number;
   fully_diluted_valuation: number;
   genesis_date: string;
+  sparkline_in_7d?: { price: number[] };
 }
 
 interface FinanceStore {
@@ -51,9 +52,9 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
   fetchAssets: async () => {
     try {
       const response = await fetch(
-        'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=15&page=1&sparkline=false&price_change_percentage=24h,7d'
+        'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=true&price_change_percentage=24h,7d'
       );
-      if (!response.ok) throw new Error('Rate limit exceeded or API down');
+      if (!response.ok) throw new Error('Nexus Terminal: API Rate Limit. Please wait.');
       const data = await response.json();
       
       const isInitialLoad = get().assets.length === 0;
@@ -73,7 +74,6 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
     
     set({ isHistoryLoading: true, currentRange: days, history: [] });
     
-    // Calcular días para YTD
     let daysParam = days;
     if (days === 'ytd') {
       const startOfYear = new Date(new Date().getFullYear(), 0, 1);
@@ -87,7 +87,7 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
         { signal: abortController.signal }
       );
       
-      if (!response.ok) throw new Error('History unavailable');
+      if (!response.ok) throw new Error('History Data: Locked or Unavailable');
       const data = await response.json();
       const formattedHistory = data.prices.map((p: [number, number]) => ({
         time: p[0],
