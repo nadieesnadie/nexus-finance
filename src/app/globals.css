@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "SF Pro Display", "Inter", system-ui, sans-serif;
+  --color-apple-blue: #007AFF;
+  --color-apple-gray: #8E8E93;
+  --color-glass-bg: rgba(255, 255, 255, 0.05);
+  --color-glass-border: rgba(255, 255, 255, 0.1);
+}
+
+:root {
+  --background: #000000;
+  --foreground: #ffffff;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+@layer base {
+  * {
+    @apply border-glass-border;
+  }
+}
+
+.glass {
+  @apply bg-glass-bg backdrop-blur-xl border border-glass-border;
+}
+
+.chart-gradient-top {
+  stop-color: var(--color-apple-blue);
+  stop-opacity: 0.3;
+}
+
+.chart-gradient-bottom {
+  stop-color: var(--color-apple-blue);
+  stop-opacity: 0;
+}
