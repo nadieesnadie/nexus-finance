@@ -157,16 +157,28 @@ export default function Dashboard() {
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.02)" />
-                      <XAxis dataKey="time" hide />
+                      <XAxis 
+                        dataKey="time" 
+                        tickFormatter={(time) => format(new Date(time), currentRange === '1' ? 'HH:mm' : 'MMM dd')}
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: '#888', fontSize: 10, fontWeight: 700 }}
+                        minTickGap={40}
+                        height={30}
+                        dy={10}
+                      />
                       <YAxis 
                         domain={yDomain} 
                         orientation="right" 
                         axisLine={false} 
                         tickLine={false}
-                        tick={{ fill: '#888', fontSize: 11, fontWeight: 800 }}
-                        tickFormatter={(val) => val >= 1000 ? `${(val/1000).toFixed(1)}k` : val.toFixed(selectedAsset?.current_price < 1 ? 4 : 2)}
-                      />
-                      <Tooltip 
+                        tick={{ fill: '#888', fontSize: 10, fontWeight: 800 }}
+                        tickFormatter={(val) => val.toLocaleString(undefined, { 
+                          minimumFractionDigits: 2, 
+                          maximumFractionDigits: val < 1 ? 6 : 2 
+                        })}
+                        width={80}
+                      />                      <Tooltip 
                         content={({ active, payload }) => {
                           if (active && payload && payload.length) {
                             return (
