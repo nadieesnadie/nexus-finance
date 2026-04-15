@@ -7,8 +7,18 @@ interface CryptoData {
   current_price: number;
   image: string;
   price_change_percentage_24h: number;
+  price_change_percentage_7d_in_currency?: number;
   market_cap: number;
-  sparkline_in_7d: { price: number[] };
+  total_volume: number;
+  high_24h: number;
+  low_24h: number;
+  ath: number;
+  atl: number;
+  circulating_supply: number;
+  total_supply: number;
+  max_supply: number;
+  fully_diluted_valuation: number;
+  genesis_date: string;
 }
 
 interface FinanceStore {
@@ -17,6 +27,7 @@ interface FinanceStore {
   error: string | null;
   fetchAssets: () => Promise<void>;
   selectedAssetId: string | null;
+  selectedAssetDetails: any | null;
   history: { time: number; value: number }[];
   currentRange: string;
   isHistoryLoading: boolean;
@@ -33,22 +44,21 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
   isHistoryLoading: false,
   error: null,
   selectedAssetId: 'bitcoin',
+  selectedAssetDetails: null,
   history: [],
   currentRange: '7',
   
   fetchAssets: async () => {
     try {
       const response = await fetch(
-        'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=10&page=1&sparkline=true&price_change_percentage=24h'
+        'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=15&page=1&sparkline=false&price_change_percentage=24h,7d'
       );
       if (!response.ok) throw new Error('Market data unavailable');
       const data = await response.json();
       
-      const currentAssets = get().assets;
-      // Solo disparar carga inicial si no hay activos
-      if (currentAssets.length === 0) {
+      if (get().assets.length === 0) {
         set({ assets: data, loading: false });
-        get().fetchHistory(data[0].id, get().currentRange);
+        get().setSelectedAsset(data[0].id);
       } else {
         set({ assets: data });
       }
@@ -58,13 +68,10 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
   },
 
   fetchHistory: async (id: string, days: string) => {
-    // Cancel previous request if any
-    if (abortController) {
-      abortController.abort();
-    }
+    if (abortController) abortController.abort();
     abortController = new AbortController();
     
-    set({ isHistoryLoading: true, currentRange: days, history: [] }); // Reset history here
+    set({ isHistoryLoading: true, currentRange: days, history: [] });
     
     try {
       const response = await fetch(
@@ -72,27 +79,25 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
         { signal: abortController.signal }
       );
       
-      if (!response.ok) {
-        if (response.status === 429) throw new Error('Rate limit exceeded. Please wait.');
-        throw new Error('Failed to fetch history');
-      }
-
+      if (!response.ok) throw new Error('Failed to fetch history');
       const data = await response.json();
       const formattedHistory = data.prices.map((p: [number, number]) => ({
         time: p[0],
         value: p[1]
       }));
       
-      set({ history: formattedHistory, isHistoryLoading: false, error: null });
+      set({ history: formattedHistory, isHistoryLoading: false });
     } catch (err: any) {
       if (err.name === 'AbortError') return;
-      console.error('History fetch error:', err);
-      set({ isHistoryLoading: false, error: err.message });
+      set({ isHistoryLoading: false });
     }
   },
 
-  setSelectedAsset: (id: string) => {
+  setSelectedAsset: async (id: string) => {
     set({ selectedAssetId: id });
+    const assets = get().assets;
+    const details = assets.find(a => a.id === id);
+    set({ selectedAssetDetails: details });
     get().fetchHistory(id, get().currentRange);
   },
 
