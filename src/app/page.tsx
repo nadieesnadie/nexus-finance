@@ -13,10 +13,10 @@ import { format, startOfDay, addHours, addDays, startOfMonth, addMonths, startOf
 const translations = {
   en: {
     terminal: 'Terminal',
-    syncing: 'Syncing...',
-    feed_error: 'Feed Error',
-    feed_msg: 'Market data stream unavailable.',
-    reset_conn: 'Reset',
+    syncing: 'Syncing streams...',
+    feed_error: 'Institutional Feed Error',
+    feed_msg: 'The primary market data stream is temporarily unavailable.',
+    reset_conn: 'Reset Connection',
     audit: 'Audit CSV',
     about: 'About',
     ranking: 'global market cap',
@@ -39,15 +39,15 @@ const translations = {
   },
   es: {
     terminal: 'Terminal',
-    syncing: 'Sincronizando...',
-    feed_error: 'Error de Feed',
-    feed_msg: 'Flujo de datos no disponible.',
-    reset_conn: 'Reiniciar',
+    syncing: 'Sincronizando flujos...',
+    feed_error: 'Error de Feed Institucional',
+    feed_msg: 'El flujo de datos de mercado principal no está disponible temporalmente.',
+    reset_conn: 'Reiniciar Conexión',
     audit: 'Auditar CSV',
     about: 'Sobre',
-    ranking: 'capitalización global',
+    ranking: 'capitalización de mercado global',
     milestone: 'hito histórico',
-    intensity: 'La intensidad intradía muestra un delta de',
+    intensity: 'La intensidad intradía actual muestra un delta de rendimiento de',
     participation: 'con alta participación institucional.',
     market_intensity: 'Intensidad de Mercado',
     liquidity: 'Liquidez de Mercado (Top 50)',
@@ -58,8 +58,8 @@ const translations = {
       vol: 'Volumen (24h)',
       total_supply: 'Suministro Total',
       range: 'Rango del Día',
-      ath: 'Máximo Histórico',
-      genesis: 'Fecha Génesis',
+      ath: 'Máximo Histórico (ATH)',
+      genesis: 'Génesis del Protocolo',
       fdv: 'Valuación Diluida'
     }
   }
@@ -143,18 +143,7 @@ export default function Dashboard() {
     <div className="flex items-center justify-center h-screen bg-[#0a0518]">
       <div className="flex flex-col items-center gap-6">
         <div className="w-12 h-12 border-4 border-violet-500 border-t-white rounded-full animate-spin"></div>
-        <p className="text-white text-base font-bold uppercase animate-pulse">Syncing Nexus Terminal...</p>
-      </div>
-    </div>
-  );
-
-  if (!assets || assets.length === 0) return (
-    <div className="flex items-center justify-center h-screen bg-[#0a0518]">
-      <div className="flex flex-col items-center gap-6 p-12 bg-white/5 border border-white/10 rounded-3xl max-w-lg text-center backdrop-blur-xl">
-        <DatabaseZap size={48} className="text-red-500" />
-        <h2 className="text-white text-2xl font-bold tracking-tight uppercase">{t.feed_error}</h2>
-        <p className="text-white/60 text-sm leading-relaxed">{t.feed_msg}</p>
-        <button onClick={() => { window.location.reload(); }} className="mt-4 px-8 py-3 bg-white text-black rounded-xl font-bold text-xs uppercase tracking-widest hover:scale-105 transition-transform">{t.reset_conn}</button>
+        <p className="text-violet-200 text-sm tracking-[0.5em] font-bold uppercase animate-pulse">Establishing Nexus Feed...</p>
       </div>
     </div>
   );
@@ -180,11 +169,11 @@ export default function Dashboard() {
       <motion.aside 
         onHoverStart={() => setIsSidebarExpanded(true)}
         onHoverEnd={() => setIsSidebarExpanded(false)}
-        animate={{ width: isSidebarExpanded ? 240 : 80 }}
+        animate={{ width: isSidebarExpanded ? 260 : 80 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         className="h-full border-r border-white/5 bg-[#0a0518]/95 backdrop-blur-3xl flex flex-col py-8 px-4 z-50 relative hidden lg:flex"
       >
-        <div className="flex items-center gap-3 mb-16 px-2 overflow-hidden">
+        <div className="flex items-center gap-4 mb-16 px-2 overflow-hidden">
           <div className="w-10 h-10 bg-white text-black flex items-center justify-center font-black text-xl rounded shrink-0 shadow-[0_0_20px_rgba(255,255,255,0.2)]">N</div>
           <AnimatePresence mode="wait">
             {isSidebarExpanded && (
@@ -211,7 +200,7 @@ export default function Dashboard() {
                   <h1 className="text-5xl font-normal text-white tracking-tight leading-none">{selectedAsset?.name || t.syncing}</h1>
                   <span className="text-2xl text-white/40 font-light uppercase tracking-widest">{selectedAsset?.symbol}</span>
                   <a href={`https://finance.yahoo.com/quote/${selectedAsset?.symbol?.toUpperCase()}-USD`} target="_blank" className="text-white/20 hover:text-violet-400 transition-all">
-                    <ExternalLink size={18} />
+                    <ExternalLink size={20} />
                   </a>
                 </div>
                 <div className="flex items-center gap-6 mt-3">
@@ -219,7 +208,7 @@ export default function Dashboard() {
                     ${(selectedAsset?.current_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 })}
                   </span>
                   <div className={`flex items-center gap-1 text-xl font-medium ${selectedAsset?.price_change_percentage_24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                    {selectedAsset?.price_change_percentage_24h >= 0 ? <ArrowUp size={20} /> : <ArrowDown size={20} />}
+                    {selectedAsset?.price_change_percentage_24h >= 0 ? <ArrowUp size={24} /> : <ArrowDown size={24} />}
                     {Math.abs(selectedAsset?.price_change_percentage_24h || 0).toFixed(2)}%
                   </div>
                 </div>
@@ -243,12 +232,13 @@ export default function Dashboard() {
 
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-12 text-white">
             
-            <div className="xl:col-span-9 flex flex-col gap-10"> {/* EXPANDED TO 9 COLS */}
+            {/* EXPANDED CHART AREA (10 COLS) */}
+            <div className="xl:col-span-10 flex flex-col gap-12"> 
               
-              <div className="bg-black/20 border border-white/10 rounded-2xl p-8 min-h-[550px] flex flex-col relative overflow-visible shadow-2xl backdrop-blur-md">
+              <div className="bg-black/20 border border-white/10 rounded-[3.5rem] p-10 min-h-[600px] flex flex-col relative overflow-visible shadow-2xl backdrop-blur-md">
                 {isHistoryLoading && (
-                  <div className="absolute inset-0 bg-[#0a0518]/90 backdrop-blur-xl z-30 flex items-center justify-center flex-col gap-6 rounded-2xl">
-                    <RefreshCw className="animate-spin text-violet-500" size={32} />
+                  <div className="absolute inset-0 bg-[#0a0518]/90 backdrop-blur-xl z-30 flex items-center justify-center flex-col gap-6 rounded-[3.5rem]">
+                    <RefreshCw className="animate-spin text-violet-500" size={40} />
                     <p className="text-violet-200 text-[10px] font-black tracking-[0.5em] uppercase animate-pulse">{t.syncing}</p>
                   </div>
                 )}
@@ -258,18 +248,20 @@ export default function Dashboard() {
                     <p className="text-white/40 font-bold uppercase tracking-[0.3em] text-sm">volume not available</p>
                   </div>
                 )}
-                <div className="flex flex-col sm:flex-row justify-between items-center mb-8 z-10 gap-6">
-                  <div className="flex gap-3">
-                    <div className="flex bg-white/5 rounded-md overflow-hidden border border-white/10 shadow-inner">
+                
+                {/* TOOLBAR WITH SEPARATION */}
+                <div className="flex flex-col sm:flex-row justify-between items-center mb-10 z-10 gap-6">
+                  <div className="flex gap-12 items-center"> {/* LARGE GAP HERE */}
+                    <div className="flex bg-white/5 rounded-lg overflow-hidden border border-white/10">
                       {ranges.map((r) => (
-                        <button key={r.label} onClick={() => setRange(r.value)} className={`px-4 py-2 text-[9px] font-bold tracking-tighter transition-all border-r border-white/10 last:border-0 uppercase ${currentRange === r.value ? 'bg-white text-black' : 'text-white/40 hover:text-white'}`}>
+                        <button key={r.label} onClick={() => setRange(r.value)} className={`px-5 py-2 text-[10px] font-bold tracking-tighter transition-all border-r border-white/10 last:border-0 uppercase ${currentRange === r.value ? 'bg-white text-black shadow-lg' : 'text-white/40 hover:text-white'}`}>
                           {r.label}
                         </button>
                       ))}
                     </div>
-                    <div className="flex bg-white/5 rounded-md overflow-hidden border border-white/10 shadow-inner">
+                    <div className="flex bg-white/5 rounded-lg overflow-hidden border border-white/10 shadow-inner">
                       {chartModes.map((m) => (
-                        <button key={m.id} onClick={() => setChartType(m.id as any)} className={`px-3 py-2 text-[9px] font-bold transition-all border-r border-white/10 last:border-0 ${chartType === m.id ? 'bg-violet-600 text-white' : 'text-white/40 hover:text-white'}`}>
+                        <button key={m.id} onClick={() => setChartType(m.id as any)} className={`px-4 py-2 text-[9px] font-bold transition-all border-r border-white/10 last:border-0 ${chartType === m.id ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/30' : 'text-white/40 hover:text-white'}`}>
                           {m.icon}
                         </button>
                       ))}
@@ -277,11 +269,11 @@ export default function Dashboard() {
                   </div>
                   <div className="flex items-center gap-2 text-[9px] font-bold text-green-500 uppercase tracking-widest bg-green-500/5 px-3 py-1 rounded-full border border-green-500/10">
                     <div className="w-1 h-1 rounded-full bg-green-500 animate-pulse"></div>
-                    Institutional Feed
+                    Institutional Feed v6
                   </div>
                 </div>
 
-                <div className="flex-1 w-full min-h-[400px] cursor-crosshair relative">
+                <div className="flex-1 w-full min-h-[450px] cursor-crosshair relative">
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={history} margin={{ top: 20, right: 10, left: 10, bottom: 80 }} onMouseMove={handleMouseMove} onMouseLeave={() => setHoverData(null)}>
                       <defs>
@@ -290,8 +282,8 @@ export default function Dashboard() {
                           <stop offset="95%" stopColor={chartColor} stopOpacity={0}/>
                         </linearGradient>
                         <linearGradient id="colorBaseline" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset={`${yDomainInfo.off}%`} stopColor="#22c55e" stopOpacity={0.3}/>
-                          <stop offset={`${yDomainInfo.off}%`} stopColor="#ef4444" stopOpacity={0.3}/>
+                          <stop offset={`${yDomainInfo.off}%`} stopColor="#22c55e" stopOpacity={0.4}/>
+                          <stop offset={`${yDomainInfo.off}%`} stopColor="#ef4444" stopOpacity={0.4}/>
                         </linearGradient>
                         <linearGradient id="strokeBaseline" x1="0" y1="0" x2="0" y2="1">
                           <stop offset={`${yDomainInfo.off}%`} stopColor="#22c55e" stopOpacity={1}/>
@@ -301,40 +293,43 @@ export default function Dashboard() {
                       <CartesianGrid strokeDasharray="0" vertical={true} horizontal={true} stroke="rgba(255,255,255,0.03)" />
                       <XAxis dataKey="time" type="number" domain={['dataMin', 'dataMax']} ticks={xTicks} tickFormatter={(t) => format(new Date(t), 'HH:mm')} axisLine={false} tickLine={false} tick={{ fill: '#FFFFFF', fontSize: 11, opacity: 0.3 }} dy={30} />
                       <YAxis domain={[yDomainInfo.min, yDomainInfo.max]} orientation="right" axisLine={false} tickLine={false} tick={{ fill: '#FFFFFF', fontSize: 11, opacity: 0.3 }} tickFormatter={(val) => val.toLocaleString()} width={100} />
-                      <Tooltip isAnimationActive={false} cursor={{ stroke: 'rgba(255,255,255,0.2)', strokeWidth: 1, strokeDasharray: '4 4' }} content={() => null} />
-                      {(chartType === 'baseline' || hoverData) && ( <ReferenceLine y={hoverData ? hoverData.close : baselineValue} stroke="rgba(255,255,255,0.2)" strokeDasharray="3 3" /> )}
-                      {chartType === 'mountain' && <Area type="monotone" dataKey="close" stroke={chartColor} strokeWidth={2} fillOpacity={1} fill="url(#colorPrice)" animationDuration={0} activeDot={{ r: 4, fill: '#FFF' }} />}
-                      {chartType === 'line' && <Line type="monotone" dataKey="close" stroke={chartColor} strokeWidth={2} dot={false} animationDuration={0} activeDot={{ r: 4, fill: '#FFF' }} />}
-                      {chartType === 'baseline' && <Area type="monotone" dataKey="close" stroke="url(#strokeBaseline)" strokeWidth={2} fill="url(#colorBaseline)" animationDuration={0} baseValue={baselineValue} />}
-                      {chartType === 'candle' && <Bar dataKey="close" barSize={4}>{history.map((e, i) => <Cell key={i} fill={e.close >= e.open ? '#22c55e' : '#ef4444'} />)}</Bar>}
-                      {chartType === 'bar' && <Bar dataKey="close" barSize={2}>{history.map((e, i) => <Cell key={i} fill={chartColor} />)}</Bar>}
+                      <Tooltip isAnimationActive={false} cursor={{ stroke: 'rgba(255,255,255,0.4)', strokeWidth: 1.5, strokeDasharray: '3 3' }} content={() => null} />
+                      {(chartType === 'baseline' || hoverData) && ( <ReferenceLine y={hoverData ? hoverData.close : baselineValue} stroke="rgba(255,255,255,0.3)" strokeDasharray="3 3" /> )}
+                      {chartType === 'mountain' && <Area type="monotone" dataKey="close" stroke={chartColor} strokeWidth={3} fillOpacity={1} fill="url(#colorPrice)" animationDuration={0} activeDot={{ r: 6, fill: '#FFF', stroke: chartColor, strokeWidth: 2 }} />}
+                      {chartType === 'line' && <Line type="monotone" dataKey="close" stroke={chartColor} strokeWidth={3} dot={false} animationDuration={0} activeDot={{ r: 6, fill: '#FFF' }} />}
+                      {chartType === 'baseline' && <Area type="monotone" dataKey="close" stroke="url(#strokeBaseline)" strokeWidth={3} fill="url(#colorBaseline)" animationDuration={0} baseValue={baselineValue} />}
+                      {chartType === 'candle' && <Bar dataKey="close" barSize={6}>{history.map((e, i) => <Cell key={i} fill={e.close >= e.open ? '#22c55e' : '#ef4444'} />)}</Bar>}
+                      {chartType === 'bar' && <Bar dataKey="close" barSize={3}>{history.map((e, i) => <Cell key={i} fill={chartColor} />)}</Bar>}
                     </ComposedChart>
                   </ResponsiveContainer>
-                  
-                  {/* CENTRAL BOTTOM BADGE: DYNAMIC DATE INDICATOR */}
+
+                  {/* YAHOO DYNAMIC BADGES: Price & Time (Bottom Center) */}
                   <AnimatePresence>
                     {hoverData && (
                       <>
-                        <div className="absolute left-1/2 -translate-x-1/2 bottom-[10px] bg-white text-black px-6 py-2 rounded-full font-bold text-xs z-40 whitespace-nowrap shadow-[0_0_20px_rgba(255,255,255,0.3)] border border-white/10" style={{ left: mousePos.x }}>
+                        {/* BOTTOM CENTER DATE BADGE */}
+                        <div className="absolute left-1/2 -translate-x-1/2 bottom-[10px] bg-white text-black px-6 py-2 rounded-full font-black text-xs z-40 whitespace-nowrap shadow-[0_0_30px_rgba(255,255,255,0.4)] border border-white/10" style={{ left: mousePos.x }}>
                           {format(new Date(hoverData.time), 'MMM dd, yyyy • HH:mm:ss')}
                         </div>
-                        <div className="absolute right-0 bg-[#FFFFFF] text-black px-2 py-1 rounded-l font-bold text-[10px] z-40 tabular-nums pointer-events-none shadow-2xl" style={{ top: mousePos.y - 10 }}> 
+                        {/* RIGHT PRICE BADGE */}
+                        <div className="absolute right-0 bg-[#FFFFFF] text-black px-2 py-1 rounded-l font-black text-[10px] z-40 tabular-nums pointer-events-none shadow-2xl border border-white/10" style={{ top: mousePos.y - 12 }}> 
                           ${hoverData.close.toLocaleString(undefined, { maximumFractionDigits: 4 })} 
                         </div>
                       </>
                     )}
                   </AnimatePresence>
                 </div>
-                <div className="flex justify-end mt-4">
-                  <a href={currentRange === '1' || currentRange === '5' ? "https://www.binance.com" : "https://www.coingecko.com"} target="_blank" className="flex items-center gap-2 text-[9px] font-bold text-white/20 hover:text-white uppercase tracking-widest transition-all">
-                    {t.powered} {currentRange === '1' || currentRange === '5' ? 'Binance API' : 'CoinGecko Feed'}
-                    <ExternalLink size={10} />
+
+                <div className="flex justify-end mt-6">
+                  <a href={currentRange === '1' || currentRange === '5' ? "https://www.binance.com" : "https://www.coingecko.com"} target="_blank" className="flex items-center gap-2 text-[10px] font-black text-white hover:text-violet-400 transition-all uppercase tracking-[0.4em] opacity-30 hover:opacity-100">
+                    {t.powered} {currentRange === '1' || currentRange === '5' ? 'Binance Real-Time API' : 'CoinGecko Feed'}
+                    <ExternalLink size={12} />
                   </a>
                 </div>
               </div>
 
-              {/* TECHNICAL DATA - ALL WHITE LABELS */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-20 gap-y-1">
+              {/* TECHNICAL DATA: ALL WHITE LABELS */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-24 gap-y-2">
                 <StatRow label={t.stats.mcap} value={`$${((selectedAsset?.market_cap || 0) / 1e9).toFixed(3)}B`} />
                 <StatRow label={t.stats.supply} value={`${((selectedAsset?.circulating_supply || 0) / 1e6).toFixed(2)}M ${selectedAsset?.symbol?.toUpperCase() || ''}`} />
                 <StatRow label={t.stats.vol} value={`$${((selectedAsset?.total_volume || 0) / 1e9).toFixed(3)}B`} />
@@ -346,44 +341,45 @@ export default function Dashboard() {
               </div>
 
               {/* ASSET DESCRIPTION */}
-              <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-10 mt-6 relative overflow-hidden">
-                <div className="flex items-center gap-3 mb-6 text-violet-300 font-bold text-xs uppercase tracking-widest">
-                  <Sparkles size={16} /> <span>NEXUS AI INSIGHT</span>
+              <div className="bg-white/[0.03] border border-white/10 rounded-[2.5rem] p-12 mt-6 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-12 text-violet-500/5 group-hover:text-violet-500/10 transition-colors">
+                   <Sparkles size={200} />
                 </div>
-                <h3 className="text-2xl font-bold mb-4 text-white uppercase tracking-tight">{t.about} {selectedAsset?.name}</h3>
-                <p className="text-white/90 text-lg font-light leading-relaxed">
-                  {selectedAsset?.name} ({selectedAsset?.symbol?.toUpperCase()}) is a decentralized digital asset currently positioned at #{assets?.indexOf(selectedAsset) + 1} in {t.ranking}. 
-                  With a {t.milestone} of ${selectedAsset?.ath?.toLocaleString()} achieved on {selectedAsset?.ath_date ? format(new Date(selectedAsset.ath_date), 'MMM dd, yyyy') : 'recorded history'}.
-                  {t.intensity} {selectedAsset?.price_change_percentage_24h?.toFixed(2)}% {t.participation}
-                </p>
+                <div className="relative z-10">
+                  <h3 className="text-violet-300 text-xs font-black tracking-[0.5em] mb-8 uppercase flex items-center gap-3">
+                    <Sparkles size={20} /> {t.about} {selectedAsset?.name}
+                  </h3>
+                  <p className="text-white text-2xl font-light leading-relaxed tracking-tight">
+                    {selectedAsset?.name} ({selectedAsset?.symbol?.toUpperCase()}) is a decentralized digital asset currently positioned at #{assets?.indexOf(selectedAsset) + 1} in {t.ranking}. 
+                    With a {t.milestone} of <span className="text-white font-normal">${selectedAsset?.ath?.toLocaleString()}</span> achieved on {selectedAsset?.ath_date ? format(new Date(selectedAsset.ath_date), 'MMM dd, yyyy') : 'recorded history'}.
+                    {t.intensity} <span className="text-white font-normal">{selectedAsset?.price_change_percentage_24h?.toFixed(2)}%</span> {t.participation}
+                  </p>
+                </div>
               </div>
             </div>
 
-            {/* RIGHT SIDE: SMALLER COLS (3) */}
-            <div className="xl:col-span-3 flex flex-col gap-10">
+            {/* RIGHT SIDE: SMALLER COLS (2) */}
+            <div className="xl:col-span-2 flex flex-col gap-10">
               <div>
-                <h3 className="text-violet-300 text-xs font-bold uppercase mb-8 flex items-center gap-2">
+                <h3 className="text-violet-300 text-xs font-bold uppercase mb-8 flex items-center gap-2 opacity-40">
                   <Activity size={16} /> {t.market_intensity}
                 </h3>
                 <div className="bg-white/[0.02] border border-white/10 rounded-xl overflow-hidden shadow-2xl">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b border-white/10 bg-white/[0.03]">
-                        <th className="p-5 text-[9px] font-bold text-white uppercase">Symbol</th>
-                        <th className="p-5 text-[9px] font-bold text-white uppercase text-right">Last</th>
-                        <th className="p-5 text-[9px] font-bold text-white uppercase text-right">Delta</th>
+                        <th className="p-4 text-[9px] font-bold text-white uppercase">Ticker</th>
+                        <th className="p-4 text-[9px] font-bold text-white uppercase text-right">Delta</th>
                       </tr>
                     </thead>
                     <tbody>
                       {assets?.slice(0, 15).map((asset) => (
-                        <tr key={asset.id} onClick={() => setSelectedAsset(asset.id)} className={`border-b border-white/[0.02] last:border-0 hover:bg-white/[0.05] cursor-pointer transition-all ${selectedAssetId === asset.id ? 'bg-white/10' : ''}`}>
-                          <td className="p-5">
+                        <tr key={asset.id} onClick={() => setSelectedAsset(asset.id)} className={`border-b border-white/[0.02] last:border-0 hover:bg-violet-600/10 cursor-pointer transition-all ${selectedAssetId === asset.id ? 'bg-white/10' : ''}`}>
+                          <td className="p-4">
                             <div className="font-bold text-sm text-white uppercase">{asset.symbol}</div>
-                            <div className="text-[10px] text-white truncate max-w-[80px]">{asset.name}</div>
                           </td>
-                          <td className="p-5 text-right font-normal text-xs tabular-nums text-white">${(asset.current_price || 0).toLocaleString()}</td>
-                          <td className="p-5 text-right">
-                            <div className={`inline-block font-bold text-[9px] tabular-nums ${asset.price_change_percentage_24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                          <td className="p-4 text-right">
+                            <div className={`inline-block font-bold text-[10px] tabular-nums ${asset.price_change_percentage_24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                               {(asset.price_change_percentage_24h || 0).toFixed(2)}%
                             </div>
                           </td>
@@ -416,9 +412,9 @@ function SidebarItem({ icon, label, active = false, expanded = false }: { icon: 
 
 function StatRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex justify-between items-center py-4 border-b border-white/5 last:border-0">
-      <span className="text-white text-[10px] font-bold uppercase tracking-widest">{label}</span>
-      <span className="text-white text-base font-normal tabular-nums">{value}</span>
+    <div className="flex justify-between items-center py-5 border-b border-white/5 last:border-0">
+      <span className="text-white text-[12px] font-black uppercase tracking-tight leading-none">{label}</span>
+      <span className="text-white text-2xl font-normal tabular-nums tracking-tighter leading-none">{value}</span>
     </div>
   );
 }
