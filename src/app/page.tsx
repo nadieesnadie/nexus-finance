@@ -19,12 +19,13 @@ export default function Dashboard() {
   const [isMounted, setIsMounted] = useState(false);
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
+  const seriesRef = useRef<any>(null);
 
-  // Prevention of SSR crashes
+  // Fast Polling for Real-Time data
   useEffect(() => {
     setIsMounted(true);
     fetchAssets();
-    const interval = setInterval(() => fetchAssets(), 60000);
+    const interval = setInterval(() => fetchAssets(), 10000); // 10s Live Refresh
     return () => clearInterval(interval);
   }, [fetchAssets]);
 
@@ -39,18 +40,9 @@ export default function Dashboard() {
     return last >= first ? '#22c55e' : '#ef4444';
   }, [history]);
 
-  const yDomain = useMemo(() => {
-    if (!history || history.length === 0) return { min: 0, max: 100 };
-    const values = history.map(h => h.value);
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const padding = (max - min) * 0.15 || min * 0.05;
-    return { min: min - padding, max: max + padding };
-  }, [history]);
-
-  // TRADINGVIEW ENGINE
+  // 1. CHART INITIALIZATION (Runs ONCE)
   useEffect(() => {
-    if (!isMounted || !chartContainerRef.current || !selectedAsset || !history) return;
+    if (!isMounted || !chartContainerRef.current) return;
 
     const chart = createChart(chartContainerRef.current, {
       layout: {
@@ -63,29 +55,56 @@ export default function Dashboard() {
         horzLines: { color: 'rgba(255, 255, 255, 0.02)' },
       },
       crosshair: {
-        mode: 0,
+        mode: 0, // Magnet mode
         vertLine: { width: 1, color: 'rgba(255, 255, 255, 0.3)', style: 3, labelBackgroundColor: '#000000' },
         horzLine: { width: 1, color: 'rgba(255, 255, 255, 0.3)', style: 3, labelBackgroundColor: '#000000' },
       },
       rightPriceScale: { borderVisible: false },
-      timeScale: { borderVisible: false, timeVisible: true, secondsVisible: false },
+      timeScale: { 
+        borderVisible: false, 
+        timeVisible: true, 
+        secondsVisible: false,
+        minBarSpacing: 0.5, // Prevents infinite zoom out
+      },
       handleScroll: true,
       handleScale: true,
     });
 
     const areaSeries = chart.addSeries(AreaSeries, {
+      lineWidth: 2,
+    });
+
+    chartRef.current = chart;
+    seriesRef.current = areaSeries;
+
+    const handleResize = () => {
+      if (chartContainerRef.current) {
+        chart.applyOptions({ width: chartContainerRef.current.clientWidth });
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      chart.remove();
+    };
+  }, [isMounted]);
+
+  // 2. DATA & COLOR SYNCHRONIZATION
+  useEffect(() => {
+    if (!chartRef.current || !seriesRef.current || !history || history.length === 0 || !selectedAsset) return;
+
+    seriesRef.current.applyOptions({
       lineColor: chartColor,
       topColor: `${chartColor}30`,
       bottomColor: `${chartColor}00`,
-      lineWidth: 2,
       priceFormat: {
         type: 'price',
-        precision: selectedAsset?.current_price < 1 ? 6 : 2,
+        precision: selectedAsset.current_price < 1 ? 6 : 2,
         minMove: 0.000001,
       },
     });
 
-    // Sanitización estricta de datos (No duplicados, orden cronológico, y sin nulos)
     const uniqueDataMap = new Map();
     history.forEach(item => {
       if (item.time && typeof item.value === 'number' && !isNaN(item.value)) {
@@ -99,27 +118,30 @@ export default function Dashboard() {
 
     try {
       if (data.length > 0) {
-        areaSeries.setData(data);
-        chart.timeScale().fitContent();
+        seriesRef.current.setData(data);
+        chartRef.current.timeScale().fitContent();
       }
     } catch (e) {
       console.error("Nexus Engine: Invalid chart data format", e);
     }
+  }, [history, chartColor, selectedAsset]);
 
-    chartRef.current = chart;
+  // 3. REAL-TIME APPEND
+  useEffect(() => {
+    if (!seriesRef.current || !selectedAsset || !history || history.length === 0) return;
+    
+    const now = Math.floor(Date.now() / 1000);
+    const lastDataPointTime = Math.floor(history[history.length - 1].time / 1000);
 
-    const handleResize = () => {
-      if (chartContainerRef.current) {
-        chart.applyOptions({ width: chartContainerRef.current.clientWidth });
+    // Append to chart if it's new data and we're looking at live ranges (1D)
+    if (now > lastDataPointTime && currentRange === '1') {
+      try {
+        seriesRef.current.update({ time: now as any, value: selectedAsset.current_price });
+      } catch (e) {
+        // Silently ignore minor deduplication conflicts during rapid updates
       }
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      chart.remove();
-    };
-  }, [history, chartColor, selectedAsset, isMounted]);
+    }
+  }, [selectedAsset?.current_price, currentRange]);
 
   if (!isMounted || (loading && (!assets || assets.length === 0))) return (
     <div className="flex items-center justify-center h-screen bg-[#0d081a]">
@@ -171,7 +193,7 @@ export default function Dashboard() {
           
           <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-10 mb-12">
             <div className="flex items-center gap-8">
-              <div className="w-20 h-20 bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center justify-center">
+              <div className="w-20 h-20 bg-white/5 border border-white/10 rounded-[2rem] p-5 flex items-center justify-center shadow-2xl backdrop-blur-xl">
                 {selectedAsset?.image && <img src={selectedAsset.image} alt="" className="w-full h-full object-contain" />}
               </div>
               <div>
@@ -181,10 +203,10 @@ export default function Dashboard() {
                 </div>
                 <div className="flex items-center gap-8 mt-4">
                   <span className="text-5xl font-normal text-white tabular-nums tracking-tighter">
-                    ${selectedAsset?.current_price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 })}
+                    ${(selectedAsset?.current_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 })}
                   </span>
-                  <div className={`flex items-center gap-2 text-xl font-medium px-4 py-1 rounded-xl ${selectedAsset?.price_change_percentage_24h >= 0 ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10'}`}>
-                    {selectedAsset?.price_change_percentage_24h >= 0 ? <ArrowUp size={24} /> : <ArrowDown size={24} />}
+                  <div className={`flex items-center gap-2 text-xl font-medium px-4 py-1 rounded-xl ${(selectedAsset?.price_change_percentage_24h || 0) >= 0 ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10'}`}>
+                    {(selectedAsset?.price_change_percentage_24h || 0) >= 0 ? <ArrowUp size={24} /> : <ArrowDown size={24} />}
                     {Math.abs(selectedAsset?.price_change_percentage_24h || 0).toFixed(2)}%
                   </div>
                 </div>
@@ -208,7 +230,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-16">
             <div className="xl:col-span-8 flex flex-col gap-16">
               
-              <div className="bg-[#0c0a1f]/40 border border-white/10 rounded-[2.5rem] p-10 min-h-[600px] flex flex-col relative overflow-visible shadow-2xl backdrop-blur-md">
+              <div className="bg-[#0c0a1f]/40 border border-white/10 rounded-[3.5rem] p-10 min-h-[600px] flex flex-col relative overflow-visible shadow-[0_40px_100px_rgba(0,0,0,0.4)] backdrop-blur-md">
                 {isHistoryLoading && (
                   <div className="absolute inset-0 bg-[#0d081a]/80 backdrop-blur-sm z-30 flex items-center justify-center rounded-[2.5rem]">
                     <RefreshCw className="animate-spin text-violet-500" size={32} />
@@ -228,8 +250,8 @@ export default function Dashboard() {
                     ))}
                   </div>
                   <div className="text-[10px] font-bold text-violet-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse"></div>
-                    Engine V5 Precision
+                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+                    Engine V5 Live Sync
                   </div>
                 </div>
 
@@ -237,16 +259,16 @@ export default function Dashboard() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-20 gap-y-1">
-                <StatRow label="Market Cap" value={`$${(selectedAsset?.market_cap / 1e9 || 0).toFixed(3)}B`} />
-                <StatRow label="Circulating Supply" value={`${(selectedAsset?.circulating_supply / 1e6 || 0).toFixed(2)}M ${selectedAsset?.symbol?.toUpperCase() || ''}`} />
-                <StatRow label="Volume (24h)" value={`$${(selectedAsset?.total_volume / 1e9 || 0).toFixed(3)}B`} />
+                <StatRow label="Market Cap" value={`$${((selectedAsset?.market_cap || 0) / 1e9).toFixed(3)}B`} />
+                <StatRow label="Circulating Supply" value={`${((selectedAsset?.circulating_supply || 0) / 1e6).toFixed(2)}M ${selectedAsset?.symbol?.toUpperCase() || ''}`} />
+                <StatRow label="Volume (24h)" value={`$${((selectedAsset?.total_volume || 0) / 1e9).toFixed(3)}B`} />
                 <StatRow label="Total Supply" value={selectedAsset?.total_supply ? `${(selectedAsset.total_supply / 1e6).toFixed(2)}M` : '--'} />
-                <StatRow label="Day's Range" value={`$${selectedAsset?.low_24h?.toLocaleString() || '0'} - $${selectedAsset?.high_24h?.toLocaleString() || '0'}`} />
+                <StatRow label="Day's Range" value={`$${(selectedAsset?.low_24h || 0).toLocaleString()} - $${(selectedAsset?.high_24h || 0).toLocaleString()}`} />
                 <StatRow label="Max Supply" value={selectedAsset?.max_supply ? `${(selectedAsset.max_supply / 1e6).toFixed(2)}M` : '∞'} />
-                <StatRow label="All-time High" value={`$${selectedAsset?.ath?.toLocaleString() || '0'}`} />
+                <StatRow label="All-time High" value={`$${(selectedAsset?.ath || 0).toLocaleString()}`} />
                 <StatRow label="Genesis Date" value={selectedAsset?.genesis_date || '2009-01-03'} />
-                <StatRow label="All-time Low" value={`$${selectedAsset?.atl?.toLocaleString() || '0'}`} />
-                <StatRow label="Fully Diluted Val." value={`$${(selectedAsset?.fully_diluted_valuation / 1e9 || 0).toFixed(3)}B`} />
+                <StatRow label="All-time Low" value={`$${(selectedAsset?.atl || 0).toLocaleString()}`} />
+                <StatRow label="Fully Diluted Val." value={`$${((selectedAsset?.fully_diluted_valuation || 0) / 1e9).toFixed(3)}B`} />
               </div>
             </div>
 
@@ -266,21 +288,40 @@ export default function Dashboard() {
                     </thead>
                     <tbody>
                       {assets?.slice(0, 15).map((asset) => (
-                        <tr key={asset.id} onClick={() => setSelectedAsset(asset.id)} className={`border-b border-white/[0.03] last:border-0 hover:bg-violet-500/10 cursor-pointer transition-all ${selectedAssetId === asset.id ? 'bg-white/10' : ''}`}>
+                        <tr key={asset.id} onClick={() => setSelectedAsset(asset.id)} className={`border-b border-white/[0.03] last:border-0 hover:bg-violet-500/10 cursor-pointer transition-colors ${selectedAssetId === asset.id ? 'bg-white/10' : ''}`}>
                           <td className="p-5">
                             <div className="font-bold text-sm text-white">{asset.symbol?.toUpperCase()}</div>
                             <div className="text-[10px] text-white/30 truncate max-w-[100px]">{asset.name}</div>
                           </td>
-                          <td className="p-5 text-right font-normal text-sm tabular-nums">${asset.current_price?.toLocaleString()}</td>
+                          <td className="p-5 text-right font-normal text-sm tabular-nums">
+                            ${(asset.current_price || 0) < 1 ? (asset.current_price || 0).toFixed(4) : (asset.current_price || 0).toLocaleString()}
+                          </td>
                           <td className="p-5 text-right">
-                            <div className={`inline-block font-bold text-[10px] px-2 py-1 rounded ${asset.price_change_percentage_24h >= 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
-                              {asset.price_change_percentage_24h >= 0 ? '+' : ''}{asset.price_change_percentage_24h?.toFixed(2)}%
+                            <div className={`inline-block font-bold text-[10px] px-2 py-1 rounded ${(asset.price_change_percentage_24h || 0) >= 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                              {(asset.price_change_percentage_24h || 0) >= 0 ? '+' : ''}{(asset.price_change_percentage_24h || 0).toFixed(2)}%
                             </div>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-6">
+                <h3 className="text-white text-[11px] font-bold tracking-[0.3em] uppercase mb-4 px-4 opacity-40 text-center">Market Liquidity (Top 50)</h3>
+                <div className="flex flex-col max-h-[600px] overflow-y-auto custom-scrollbar border border-white/5 rounded-[2.5rem] bg-black/20">
+                  {assets?.map((asset) => (
+                    <div key={asset.id} onClick={() => setSelectedAsset(asset.id)} className={`p-6 cursor-pointer flex justify-between items-center border-b border-white/[0.03] last:border-0 transition-all ${selectedAssetId === asset.id ? 'bg-white text-black' : 'hover:bg-white/5'}`}>
+                      <div className="flex items-center gap-5">
+                        <img src={asset.image} alt="" className="w-8 h-8 object-contain" />
+                        <div className={`font-black text-base tracking-tighter ${selectedAssetId === asset.id ? 'text-black' : 'text-white'}`}>{asset.name}</div>
+                      </div>
+                      <div className={`text-sm font-normal tabular-nums ${selectedAssetId === asset.id ? 'text-black' : 'text-white'}`}>
+                        ${(asset.current_price || 0) < 1 ? (asset.current_price || 0).toFixed(4) : (asset.current_price || 0).toLocaleString()}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -293,7 +334,7 @@ export default function Dashboard() {
 
 function SidebarItem({ icon, label, active = false, expanded = false }: { icon: React.ReactNode; label: string; active?: boolean; expanded?: boolean }) {
   return (
-    <div className={`flex items-center gap-5 p-4 rounded-2xl cursor-pointer transition-all ${active ? 'bg-violet-600 text-white shadow-2xl' : 'text-white/30 hover:text-white hover:bg-white/5'}`}>
+    <div className={`flex items-center gap-5 p-4 rounded-2xl cursor-pointer transition-all ${active ? 'bg-violet-600 text-white shadow-[0_0_30px_rgba(139,92,246,0.3)]' : 'text-white/30 hover:text-white hover:bg-white/5'}`}>
       <div className="shrink-0">{icon}</div>
       {expanded && <span className="text-base font-bold tracking-tight">{label}</span>}
     </div>
