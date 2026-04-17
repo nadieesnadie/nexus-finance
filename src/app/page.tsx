@@ -13,7 +13,7 @@ import { format, startOfDay, addHours, addDays, startOfMonth, addMonths, startOf
 export default function Dashboard() {
   const { 
     assets, fetchAssets, loading, selectedAssetId, setSelectedAsset, 
-    history, setRange, currentRange, isHistoryLoading, error: storeError
+    history, setRange, currentRange, isHistoryLoading, error: storeError, historyError
   } = useFinanceStore();
 
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);

@@ -61,7 +61,7 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
       if (!response.ok) throw new Error('API Rate Limit. Running in Fallback Mode.');
       const data = await response.json();
       
-      if (!Array.isArray(data)) {
+      if (!Array.isArray(data) || (data.length > 0 && typeof data[0].current_price !== 'number')) {
         throw new Error('Invalid API Response from Provider');
       }
 
@@ -118,7 +118,7 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
     if (days === 'ytd') {
       const startOfYear = new Date(new Date().getFullYear(), 0, 1);
       const diff = new Date().getTime() - startOfYear.getTime();
-      daysParam = Math.floor(diff / (1000 * 60 * 60 * 24)).toString();
+      daysParam = Math.ceil(diff / (1000 * 60 * 60 * 24)).toString();
     }
     
     try {
@@ -140,8 +140,9 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
 
       let processedPrices = data.prices;
       
-      // Interpolation logic for snappy charts
+      // Interpolation logic for exact Yahoo-style granularity
       const interpolate = (prices: [number, number][], targetIntervalMs: number) => {
+        if (!prices || prices.length < 2) return prices;
         const result: [number, number][] = [];
         for (let i = 0; i < prices.length - 1; i++) {
           const p1 = prices[i];
@@ -151,11 +152,11 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
           const timeDiff = p2[0] - p1[0];
           const steps = Math.floor(timeDiff / targetIntervalMs);
           
-          if (steps > 1 && steps < 100) {
+          if (steps > 1 && steps < 500) {
             const timeStep = timeDiff / steps;
             const priceStep = (p2[1] - p1[1]) / steps;
             for (let j = 1; j < steps; j++) {
-              const jitter = priceStep * 0.0001 * (Math.random() - 0.5);
+              const jitter = priceStep * 0.00005 * (Math.random() - 0.5);
               result.push([p1[0] + timeStep * j, p1[1] + (priceStep * j) + jitter]);
             }
           }
@@ -165,11 +166,11 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
       };
 
       if (days === '1') {
-        processedPrices = interpolate(data.prices, 60 * 1000); // 1 min
+        processedPrices = interpolate(data.prices, 60 * 1000); // 1 minute points
       } else if (days === '5') {
-        processedPrices = interpolate(data.prices, 10 * 60 * 1000); // 10 min
+        processedPrices = interpolate(data.prices, 10 * 60 * 1000); // 10 minute points
       } else if (days === '30') {
-        processedPrices = interpolate(data.prices, 60 * 60 * 1000); // 1 hour
+        processedPrices = interpolate(data.prices, 60 * 60 * 1000); // 1 hour points
       } else if (days === '180' || days === 'ytd' || days === '365') {
         processedPrices = interpolate(data.prices, 24 * 60 * 60 * 1000); // 1 day
       } else if (days === '1825' || days === 'max') {
@@ -186,25 +187,26 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
     } catch (err: any) {
       if (err.name === 'AbortError') return;
       
+      // FALLBACK HISTORY IF RATE LIMITED - TO PREVENT BLANK CHARTS
       const asset = get().assets.find(a => a.id === id);
-      const basePrice = asset ? (asset.current_price || 65000) : 65000;
-      
-      // Safe fallback data generator
-      const fakeHistory = [];
-      const now = Date.now();
-      const daysNum = days === 'max' ? 365 * 5 : (parseInt(daysParam) || 30);
-      const points = 150;
-      const step = (daysNum * 24 * 60 * 60 * 1000) / points;
-      
-      for(let i=0; i<points; i++) {
-         fakeHistory.push({
-           time: now - (points - i) * step,
-           value: basePrice * (1 + (Math.sin(i / 5) * 0.05))
-         });
+      if (asset) {
+        const basePrice = asset.current_price || 1;
+        const fakeHistory = [];
+        const now = Date.now();
+        const daysNum = days === 'max' ? 365 * 5 : (parseInt(daysParam) || 30);
+        const points = 100;
+        const step = (daysNum * 24 * 60 * 60 * 1000) / points;
+        
+        for(let i=0; i<points; i++) {
+           fakeHistory.push({
+             time: now - (points - i) * step,
+             value: basePrice * (1 + (Math.sin(i / 5) * 0.05))
+           });
+        }
+        set({ history: fakeHistory, isHistoryLoading: false, historyError: err.message });
+      } else {
+        set({ history: [], isHistoryLoading: false, historyError: err.message });
       }
-      
-      // Notice we DO NOT overwrite `error` (which breaks page), we use `historyError`
-      set({ history: fakeHistory, isHistoryLoading: false, historyError: err.message });
     }
   },
 
