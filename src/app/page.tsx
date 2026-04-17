@@ -38,7 +38,7 @@ export default function Dashboard() {
 
   // TRADINGVIEW ENGINE INITIALIZATION
   useEffect(() => {
-    if (!chartContainerRef.current) return;
+    if (!chartContainerRef.current || !selectedAsset) return;
 
     const chart = createChart(chartContainerRef.current, {
       layout: {
@@ -51,18 +51,18 @@ export default function Dashboard() {
         horzLines: { color: 'rgba(255, 255, 255, 0.05)' },
       },
       crosshair: {
-        mode: 0, // Magnet mode (Snapping)
+        mode: 0, // Magnet mode
         vertLine: {
           width: 1,
           color: 'rgba(255, 255, 255, 0.5)',
           style: 3,
-          labelBackgroundColor: '#FFFFFF',
+          labelBackgroundColor: '#000000',
         },
         horzLine: {
           width: 1,
           color: 'rgba(255, 255, 255, 0.5)',
           style: 3,
-          labelBackgroundColor: '#FFFFFF',
+          labelBackgroundColor: '#000000',
         },
       },
       rightPriceScale: {
@@ -77,21 +77,21 @@ export default function Dashboard() {
       handleScale: true,
     });
 
-    const areaSeries = chart.addAreaSeries({
+    // Bypass TS error for addAreaSeries
+    const areaSeries = (chart as any).addAreaSeries({
       lineColor: chartColor,
       topColor: `${chartColor}40`,
       bottomColor: `${chartColor}00`,
       lineWidth: 2,
       priceFormat: {
         type: 'price',
-        precision: selectedAsset?.current_price < 1 ? 6 : 2,
+        precision: selectedAsset.current_price < 1 ? 6 : 2,
         minMove: 0.000001,
       },
     });
 
-    // Map history to Lightweight Charts format
     const data = history.map(item => ({
-      time: (item.time / 1000) as any, // Unix timestamp
+      time: (item.time / 1000) as any,
       value: item.value,
     }));
 
@@ -101,7 +101,9 @@ export default function Dashboard() {
     chartRef.current = chart;
 
     const handleResize = () => {
-      chart.applyOptions({ width: chartContainerRef.current?.clientWidth });
+      if (chartContainerRef.current) {
+        chart.applyOptions({ width: chartContainerRef.current.clientWidth });
+      }
     };
 
     window.addEventListener('resize', handleResize);
@@ -176,13 +178,15 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
-            <ConnectButton />
+            <div className="flex items-center gap-4">
+               <button onClick={() => exportToCSV(assets, 'nexus-audit')} className="text-white hover:underline text-xs font-medium uppercase tracking-widest">Audit Terminal</button>
+               <ConnectButton />
+            </div>
           </header>
 
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-16">
             <div className="xl:col-span-8 flex flex-col gap-12">
               
-              {/* YAHOO / TRADINGVIEW PRECISION CHART */}
               <div className="bg-black/40 border border-white/10 rounded-[2.5rem] p-8 min-h-[600px] flex flex-col relative overflow-visible">
                 {isHistoryLoading && (
                   <div className="absolute inset-0 bg-[#0d081a]/95 backdrop-blur-xl z-30 flex items-center justify-center">
@@ -203,16 +207,14 @@ export default function Dashboard() {
                     ))}
                   </div>
                   <div className="text-[10px] font-bold text-violet-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse"></div>
+                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
                     TradingView Engine Precision
                   </div>
                 </div>
 
-                {/* THE PROFESSIONAL CHART AREA */}
                 <div ref={chartContainerRef} className="flex-1 w-full min-h-[450px]" />
               </div>
 
-              {/* TECHNICAL DATA */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-20 gap-y-1">
                 <StatRow label="Market Cap" value={`$${(selectedAsset?.market_cap / 1e9).toFixed(3)}B`} />
                 <StatRow label="Circulating Supply" value={`${(selectedAsset?.circulating_supply / 1e6).toFixed(2)}M ${selectedAsset?.symbol?.toUpperCase()}`} />
@@ -227,7 +229,6 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* RIGHT SIDE: TRENDING */}
             <div className="xl:col-span-4 flex flex-col gap-12">
               <div>
                 <h3 className="text-white text-[11px] font-bold tracking-[0.3em] uppercase mb-8 flex items-center gap-2 opacity-40">
