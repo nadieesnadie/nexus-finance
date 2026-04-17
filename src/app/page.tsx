@@ -45,15 +45,23 @@ export default function Dashboard() {
     return history[0].close;
   }, [history]);
 
-  const yDomain = useMemo(() => {
-    if (!history || history.length === 0) return ['auto', 'auto'];
+  const yDomainInfo = useMemo(() => {
+    if (!history || history.length === 0) return { min: 0, max: 0, off: 0 };
     const highs = history.map(h => h.high);
     const lows = history.map(h => h.low);
     const min = Math.min(...lows);
     const max = Math.max(...highs);
     const padding = (max - min) * 0.15 || (min * 0.02);
-    return [min - padding, max + padding];
-  }, [history]);
+    
+    const dMin = min - padding;
+    const dMax = max + padding;
+    
+    // Calculate the percentage offset where baselineValue sits in the domain [dMin, dMax]
+    // In SVG gradients, 0% is top (max) and 100% is bottom (min)
+    const off = dMax === dMin ? 0 : (dMax - baselineValue) / (dMax - dMin);
+    
+    return { min: dMin, max: dMax, off: off * 100 };
+  }, [history, baselineValue]);
 
   const xTicks = useMemo(() => {
     if (!history || history.length === 0) return [];
@@ -129,6 +137,7 @@ export default function Dashboard() {
 
   return (
     <div className="flex h-screen bg-[#0a0518] text-white font-sans antialiased overflow-hidden selection:bg-violet-500/30">
+      
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,#1e0c3a,transparent)] pointer-events-none" />
 
       {/* SIDEBAR */}
@@ -188,7 +197,10 @@ export default function Dashboard() {
           </header>
 
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-12">
+            
             <div className="xl:col-span-8 flex flex-col gap-10">
+              
+              {/* YAHOO PROFESSIONAL CHART AREA */}
               <div className="bg-black/20 border border-white/10 rounded-2xl p-8 min-h-[550px] flex flex-col relative overflow-visible shadow-2xl backdrop-blur-md">
                 {isHistoryLoading && (
                   <div className="absolute inset-0 bg-[#0a0518]/90 backdrop-blur-xl z-30 flex items-center justify-center flex-col gap-6">
@@ -235,25 +247,37 @@ export default function Dashboard() {
                         </linearGradient>
                         <linearGradient id="colorBaseline" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="0%" stopColor="#22c55e" stopOpacity={0.3}/>
-                          <stop offset="50%" stopColor="#22c55e" stopOpacity={0}/>
-                          <stop offset="50%" stopColor="#ef4444" stopOpacity={0}/>
+                          <stop offset={`${yDomainInfo.off}%`} stopColor="#22c55e" stopOpacity={0.1}/>
+                          <stop offset={`${yDomainInfo.off}%`} stopColor="#ef4444" stopOpacity={0.1}/>
                           <stop offset="100%" stopColor="#ef4444" stopOpacity={0.3}/>
                         </linearGradient>
+                        <linearGradient id="strokeBaseline" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset={`${yDomainInfo.off}%`} stopColor="#22c55e" stopOpacity={1}/>
+                          <stop offset={`${yDomainInfo.off}%`} stopColor="#ef4444" stopOpacity={1}/>
+                        </linearGradient>
                       </defs>
+                      
                       <CartesianGrid strokeDasharray="0" vertical={true} horizontal={true} stroke="rgba(255,255,255,0.03)" />
+                      
                       <XAxis dataKey="time" type="number" domain={['dataMin', 'dataMax']} ticks={xTicks} tickFormatter={(t) => format(new Date(t), 'HH:mm')} axisLine={false} tickLine={false} tick={{ fill: '#FFFFFF', fontSize: 11, opacity: 0.3 }} dy={30} />
-                      <YAxis domain={yDomain} orientation="right" axisLine={false} tickLine={false} tick={{ fill: '#FFFFFF', fontSize: 11, opacity: 0.3 }} tickFormatter={(val) => val.toLocaleString()} width={80} />
+                      <YAxis domain={[yDomainInfo.min, yDomainInfo.max]} orientation="right" axisLine={false} tickLine={false} tick={{ fill: '#FFFFFF', fontSize: 11, opacity: 0.3 }} tickFormatter={(val) => val.toLocaleString()} width={80} />
+                      
                       <Tooltip isAnimationActive={false} cursor={{ stroke: 'rgba(255,255,255,0.2)', strokeWidth: 1, strokeDasharray: '4 4' }} content={() => null} />
+                      
                       {(chartType === 'baseline' || hoverData) && (
                         <ReferenceLine y={hoverData ? hoverData.close : baselineValue} stroke="rgba(255,255,255,0.2)" strokeDasharray="3 3" />
                       )}
+
+                      {/* RENDER MODES */}
                       {chartType === 'mountain' && <Area type="monotone" dataKey="close" stroke={chartColor} strokeWidth={2} fillOpacity={1} fill="url(#colorPrice)" animationDuration={0} activeDot={{ r: 4, fill: '#FFF' }} />}
                       {chartType === 'line' && <Line type="monotone" dataKey="close" stroke={chartColor} strokeWidth={2} dot={false} animationDuration={0} activeDot={{ r: 4, fill: '#FFF' }} />}
-                      {chartType === 'baseline' && <Area type="monotone" dataKey="close" stroke={chartColor} strokeWidth={2} fill="url(#colorBaseline)" animationDuration={0} baseValue={baselineValue} />}
+                      {chartType === 'baseline' && <Area type="monotone" dataKey="close" stroke="url(#strokeBaseline)" strokeWidth={2} fill="url(#colorBaseline)" animationDuration={0} baseValue={baselineValue} />}
                       {chartType === 'candle' && <Bar dataKey="close" barSize={4}>{history.map((e, i) => <Cell key={i} fill={e.close >= e.open ? '#22c55e' : '#ef4444'} />)}</Bar>}
                       {chartType === 'bar' && <Bar dataKey="close" barSize={2}>{history.map((e, i) => <Cell key={i} fill={chartColor} />)}</Bar>}
                     </ComposedChart>
                   </ResponsiveContainer>
+
+                  {/* YAHOO AXIS BADGES */}
                   <AnimatePresence>
                     {hoverData && (
                       <>
@@ -268,6 +292,8 @@ export default function Dashboard() {
                   </AnimatePresence>
                 </div>
               </div>
+
+              {/* TECHNICAL DATA */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-20 gap-y-1">
                 <StatRow label="Market Cap" value={`$${((selectedAsset?.market_cap || 0) / 1e9).toFixed(3)}B`} />
                 <StatRow label="Available Supply" value={`${((selectedAsset?.circulating_supply || 0) / 1e6).toFixed(2)}M ${selectedAsset?.symbol?.toUpperCase() || ''}`} />
@@ -279,6 +305,8 @@ export default function Dashboard() {
                 <StatRow label="Fully Diluted Val." value={`$${((selectedAsset?.fully_diluted_valuation || 0) / 1e9).toFixed(3)}B`} />
               </div>
             </div>
+
+            {/* RIGHT SIDE */}
             <div className="xl:col-span-4 flex flex-col gap-10">
               <div>
                 <h3 className="text-white text-[10px] font-bold tracking-[0.4em] uppercase mb-8 flex items-center gap-2 opacity-40">
