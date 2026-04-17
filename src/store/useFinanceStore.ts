@@ -103,6 +103,11 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
       }
 
       const data = await response.json();
+      
+      if (!data || !Array.isArray(data.prices)) {
+        throw new Error('Historical Feed Format Error');
+      }
+
       const formattedHistory = data.prices.map((p: [number, number]) => ({
         time: p[0],
         value: p[1]

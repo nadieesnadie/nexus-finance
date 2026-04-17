@@ -85,10 +85,10 @@ export default function Dashboard() {
       },
     });
 
-    // Sanitización estricta de datos (No duplicados, orden cronológico)
+    // Sanitización estricta de datos (No duplicados, orden cronológico, y sin nulos)
     const uniqueDataMap = new Map();
     history.forEach(item => {
-      if (item.time && item.value !== undefined) {
+      if (item.time && typeof item.value === 'number' && !isNaN(item.value)) {
         uniqueDataMap.set(Math.floor(item.time / 1000), item.value);
       }
     });
@@ -97,9 +97,13 @@ export default function Dashboard() {
       .map(([time, value]) => ({ time: time as any, value }))
       .sort((a, b) => a.time - b.time);
 
-    if (data.length > 0) {
-      areaSeries.setData(data);
-      chart.timeScale().fitContent();
+    try {
+      if (data.length > 0) {
+        areaSeries.setData(data);
+        chart.timeScale().fitContent();
+      }
+    } catch (e) {
+      console.error("Nexus Engine: Invalid chart data format", e);
     }
 
     chartRef.current = chart;
