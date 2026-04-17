@@ -67,11 +67,9 @@ export default function Dashboard() {
       },
       rightPriceScale: {
         borderVisible: false,
-        textColor: 'rgba(255, 255, 255, 0.4)',
       },
       timeScale: {
         borderVisible: false,
-        textColor: 'rgba(255, 255, 255, 0.4)',
         timeVisible: true,
         secondsVisible: false,
       },
