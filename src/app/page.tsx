@@ -40,7 +40,6 @@ export default function Dashboard() {
     return last >= first ? '#22c55e' : '#ef4444';
   }, [history]);
 
-  // Baseline logic: first price of the visible period
   const baselineValue = useMemo(() => {
     if (!history || history.length === 0) return 0;
     return history[0].close;
@@ -52,7 +51,7 @@ export default function Dashboard() {
     const lows = history.map(h => h.low);
     const min = Math.min(...lows);
     const max = Math.max(...highs);
-    const padding = (max - min) * 0.1 || (min * 0.02);
+    const padding = (max - min) * 0.15 || (min * 0.02);
     return [min - padding, max + padding];
   }, [history]);
 
@@ -75,7 +74,6 @@ export default function Dashboard() {
         if (t >= first) ticks.push(t);
       }
     } else {
-       // Monthly/Yearly ticks
        for (let t = startOfMonth(first).getTime(); t <= last; t = addMonths(t, 2).getTime()) {
         if (t >= first) ticks.push(t);
       }
@@ -95,6 +93,17 @@ export default function Dashboard() {
       <div className="flex flex-col items-center gap-6">
         <div className="w-12 h-12 border-4 border-violet-500 border-t-white rounded-full animate-spin"></div>
         <p className="text-violet-200 text-sm tracking-[0.5em] font-bold uppercase animate-pulse">Syncing Nexus Terminal...</p>
+      </div>
+    </div>
+  );
+
+  if (!assets || assets.length === 0) return (
+    <div className="flex items-center justify-center h-screen bg-[#0a0518]">
+      <div className="flex flex-col items-center gap-6 p-8 bg-white/5 border border-white/10 rounded-3xl max-w-lg text-center backdrop-blur-xl">
+        <DatabaseZap size={48} className="text-red-500" />
+        <h2 className="text-white text-2xl font-bold tracking-tight">Institutional Feed Error</h2>
+        <p className="text-white/60 text-sm leading-relaxed">The primary market data stream is temporarily unavailable.</p>
+        <button onClick={() => { window.location.reload(); }} className="mt-4 px-8 py-3 bg-white text-black rounded-xl font-bold text-xs uppercase tracking-widest hover:scale-105 transition-transform">Reset Connection</button>
       </div>
     </div>
   );
@@ -120,15 +129,13 @@ export default function Dashboard() {
 
   return (
     <div className="flex h-screen bg-[#0a0518] text-white font-sans antialiased overflow-hidden selection:bg-violet-500/30">
-      
-      {/* Background radial glow */}
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,#1e0c3a,transparent)] pointer-events-none" />
 
       {/* SIDEBAR */}
       <motion.aside 
         onHoverStart={() => setIsSidebarExpanded(true)}
         onHoverEnd={() => setIsSidebarExpanded(false)}
-        animate={{ width: isSidebarExpanded ? 240 : 80 }}
+        animate={{ width: isSidebarExpanded ? 260 : 80 }}
         className="h-full border-r border-white/5 bg-[#0a0518]/95 backdrop-blur-3xl flex flex-col py-8 px-4 z-50 relative hidden lg:flex"
       >
         <div className="flex items-center gap-4 mb-16 px-2">
@@ -175,14 +182,13 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
-            <ConnectButton />
+            <div className="flex items-center gap-4">
+              <button onClick={() => exportToCSV(assets, 'nexus-audit')} className="text-white/60 hover:text-white hover:underline text-xs font-medium uppercase tracking-[0.2em] transition-all">Audit CSV</button>
+            </div>
           </header>
 
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-12">
-            
             <div className="xl:col-span-8 flex flex-col gap-10">
-              
-              {/* YAHOO PROFESSIONAL CHART AREA */}
               <div className="bg-black/20 border border-white/10 rounded-2xl p-8 min-h-[550px] flex flex-col relative overflow-visible shadow-2xl backdrop-blur-md">
                 {isHistoryLoading && (
                   <div className="absolute inset-0 bg-[#0a0518]/90 backdrop-blur-xl z-30 flex items-center justify-center flex-col gap-6">
@@ -190,7 +196,12 @@ export default function Dashboard() {
                     <p className="text-violet-200 text-[10px] font-black tracking-[0.5em] uppercase animate-pulse">Scanning Feed</p>
                   </div>
                 )}
-                
+                {!isHistoryLoading && historyError && (
+                  <div className="absolute inset-0 z-20 flex items-center justify-center flex-col gap-4">
+                    <DatabaseZap size={32} className="text-white/20" />
+                    <p className="text-white/40 font-bold uppercase tracking-[0.3em] text-sm">volume not available</p>
+                  </div>
+                )}
                 <div className="flex flex-col sm:flex-row justify-between items-center mb-8 z-10 gap-6">
                   <div className="flex gap-3">
                     <div className="flex bg-white/5 rounded-md overflow-hidden border border-white/10">
@@ -229,21 +240,13 @@ export default function Dashboard() {
                           <stop offset="100%" stopColor="#ef4444" stopOpacity={0.3}/>
                         </linearGradient>
                       </defs>
-                      
-                      {/* YAHOO BACKGROUND GRID */}
                       <CartesianGrid strokeDasharray="0" vertical={true} horizontal={true} stroke="rgba(255,255,255,0.03)" />
-                      
                       <XAxis dataKey="time" type="number" domain={['dataMin', 'dataMax']} ticks={xTicks} tickFormatter={(t) => format(new Date(t), 'HH:mm')} axisLine={false} tickLine={false} tick={{ fill: '#FFFFFF', fontSize: 11, opacity: 0.3 }} dy={30} />
                       <YAxis domain={yDomain} orientation="right" axisLine={false} tickLine={false} tick={{ fill: '#FFFFFF', fontSize: 11, opacity: 0.3 }} tickFormatter={(val) => val.toLocaleString()} width={80} />
-                      
                       <Tooltip isAnimationActive={false} cursor={{ stroke: 'rgba(255,255,255,0.2)', strokeWidth: 1, strokeDasharray: '4 4' }} content={() => null} />
-                      
-                      {/* BASELINE GUIDE */}
                       {(chartType === 'baseline' || hoverData) && (
                         <ReferenceLine y={hoverData ? hoverData.close : baselineValue} stroke="rgba(255,255,255,0.2)" strokeDasharray="3 3" />
                       )}
-
-                      {/* RENDER MODES */}
                       {chartType === 'mountain' && <Area type="monotone" dataKey="close" stroke={chartColor} strokeWidth={2} fillOpacity={1} fill="url(#colorPrice)" animationDuration={0} activeDot={{ r: 4, fill: '#FFF' }} />}
                       {chartType === 'line' && <Line type="monotone" dataKey="close" stroke={chartColor} strokeWidth={2} dot={false} animationDuration={0} activeDot={{ r: 4, fill: '#FFF' }} />}
                       {chartType === 'baseline' && <Area type="monotone" dataKey="close" stroke={chartColor} strokeWidth={2} fill="url(#colorBaseline)" animationDuration={0} baseValue={baselineValue} />}
@@ -251,8 +254,6 @@ export default function Dashboard() {
                       {chartType === 'bar' && <Bar dataKey="close" barSize={2}>{history.map((e, i) => <Cell key={i} fill={chartColor} />)}</Bar>}
                     </ComposedChart>
                   </ResponsiveContainer>
-
-                  {/* YAHOO AXIS BADGES */}
                   <AnimatePresence>
                     {hoverData && (
                       <>
@@ -267,8 +268,6 @@ export default function Dashboard() {
                   </AnimatePresence>
                 </div>
               </div>
-
-              {/* TECHNICAL DATA - INSTITUTIONAL STYLE */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-20 gap-y-1">
                 <StatRow label="Market Cap" value={`$${((selectedAsset?.market_cap || 0) / 1e9).toFixed(3)}B`} />
                 <StatRow label="Available Supply" value={`${((selectedAsset?.circulating_supply || 0) / 1e6).toFixed(2)}M ${selectedAsset?.symbol?.toUpperCase() || ''}`} />
@@ -280,8 +279,6 @@ export default function Dashboard() {
                 <StatRow label="Fully Diluted Val." value={`$${((selectedAsset?.fully_diluted_valuation || 0) / 1e9).toFixed(3)}B`} />
               </div>
             </div>
-
-            {/* RIGHT SIDE: YAHOO STYLE RANKING */}
             <div className="xl:col-span-4 flex flex-col gap-10">
               <div>
                 <h3 className="text-white text-[10px] font-bold tracking-[0.4em] uppercase mb-8 flex items-center gap-2 opacity-40">

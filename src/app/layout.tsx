@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Providers } from "@/components/Providers";
 
 export const metadata: Metadata = {
-  title: "Nexus Finance | Premium Crypto Analytics",
-  description: "Advanced financial dashboard built with Next.js 15 and Tailwind 4",
+  title: "Nexus Finance | Institutional Market Terminal",
+  description: "Advanced financial intelligence dashboard",
 };
 
 export default function RootLayout({
@@ -14,12 +13,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased overflow-hidden bg-[#0d081a]">
-        <Providers>
-          {children}
-        </Providers>
+      <body className="antialiased overflow-hidden bg-[#0a0518]">
+        {children}
       </body>
     </html>
   );
 }
-
