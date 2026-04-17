@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { useFinanceStore } from '@/store/useFinanceStore';
-import { createChart, ColorType, IChartApi } from 'lightweight-charts';
+import { createChart, ColorType, IChartApi, AreaSeries } from 'lightweight-charts';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TrendingUp, Activity, ExternalLink, Info, ArrowUp, ArrowDown, Sparkles, LayoutDashboard, Wallet, Settings, Menu, RefreshCw } from 'lucide-react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
@@ -16,29 +16,41 @@ export default function Dashboard() {
   } = useFinanceStore();
 
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
 
+  // Prevention of SSR crashes
   useEffect(() => {
+    setIsMounted(true);
     fetchAssets();
     const interval = setInterval(() => fetchAssets(), 60000);
     return () => clearInterval(interval);
   }, [fetchAssets]);
 
   const selectedAsset = useMemo(() => 
-    assets.find(a => a.id === selectedAssetId) || assets[0],
+    assets?.find(a => a.id === selectedAssetId) || assets?.[0],
   [assets, selectedAssetId]);
 
   const chartColor = useMemo(() => {
-    if (history.length < 2) return '#a78bfa';
+    if (!history || history.length < 2) return '#a78bfa';
     const first = history[0].value;
     const last = history[history.length - 1].value;
     return last >= first ? '#22c55e' : '#ef4444';
   }, [history]);
 
-  // TRADINGVIEW ENGINE INITIALIZATION
+  const yDomain = useMemo(() => {
+    if (!history || history.length === 0) return { min: 0, max: 100 };
+    const values = history.map(h => h.value);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const padding = (max - min) * 0.15 || min * 0.05;
+    return { min: min - padding, max: max + padding };
+  }, [history]);
+
+  // TRADINGVIEW ENGINE
   useEffect(() => {
-    if (!chartContainerRef.current || !selectedAsset) return;
+    if (!isMounted || !chartContainerRef.current || !selectedAsset || !history) return;
 
     const chart = createChart(chartContainerRef.current, {
       layout: {
@@ -47,56 +59,48 @@ export default function Dashboard() {
         fontFamily: 'Inter, -apple-system, system-ui, sans-serif',
       },
       grid: {
-        vertLines: { color: 'rgba(255, 255, 255, 0.05)' },
-        horzLines: { color: 'rgba(255, 255, 255, 0.05)' },
+        vertLines: { color: 'rgba(255, 255, 255, 0.02)' },
+        horzLines: { color: 'rgba(255, 255, 255, 0.02)' },
       },
       crosshair: {
-        mode: 0, // Magnet mode
-        vertLine: {
-          width: 1,
-          color: 'rgba(255, 255, 255, 0.5)',
-          style: 3,
-          labelBackgroundColor: '#000000',
-        },
-        horzLine: {
-          width: 1,
-          color: 'rgba(255, 255, 255, 0.5)',
-          style: 3,
-          labelBackgroundColor: '#000000',
-        },
+        mode: 0,
+        vertLine: { width: 1, color: 'rgba(255, 255, 255, 0.3)', style: 3, labelBackgroundColor: '#000000' },
+        horzLine: { width: 1, color: 'rgba(255, 255, 255, 0.3)', style: 3, labelBackgroundColor: '#000000' },
       },
-      rightPriceScale: {
-        borderVisible: false,
-      },
-      timeScale: {
-        borderVisible: false,
-        timeVisible: true,
-        secondsVisible: false,
-      },
+      rightPriceScale: { borderVisible: false },
+      timeScale: { borderVisible: false, timeVisible: true, secondsVisible: false },
       handleScroll: true,
       handleScale: true,
     });
 
-    // Bypass TS error for addAreaSeries
     const areaSeries = (chart as any).addAreaSeries({
       lineColor: chartColor,
-      topColor: `${chartColor}40`,
+      topColor: `${chartColor}30`,
       bottomColor: `${chartColor}00`,
       lineWidth: 2,
       priceFormat: {
         type: 'price',
-        precision: selectedAsset.current_price < 1 ? 6 : 2,
+        precision: selectedAsset?.current_price < 1 ? 6 : 2,
         minMove: 0.000001,
       },
     });
 
-    const data = history.map(item => ({
-      time: (item.time / 1000) as any,
-      value: item.value,
-    }));
+    // Sanitización estricta de datos (No duplicados, orden cronológico)
+    const uniqueDataMap = new Map();
+    history.forEach(item => {
+      if (item.time && item.value !== undefined) {
+        uniqueDataMap.set(Math.floor(item.time / 1000), item.value);
+      }
+    });
+    
+    const data = Array.from(uniqueDataMap.entries())
+      .map(([time, value]) => ({ time: time as any, value }))
+      .sort((a, b) => a.time - b.time);
 
-    areaSeries.setData(data);
-    chart.timeScale().fitContent();
+    if (data.length > 0) {
+      areaSeries.setData(data);
+      chart.timeScale().fitContent();
+    }
 
     chartRef.current = chart;
 
@@ -107,16 +111,18 @@ export default function Dashboard() {
     };
 
     window.addEventListener('resize', handleResize);
-
     return () => {
       window.removeEventListener('resize', handleResize);
       chart.remove();
     };
-  }, [history, chartColor, selectedAsset]);
+  }, [history, chartColor, selectedAsset, isMounted]);
 
-  if (loading && assets.length === 0) return (
+  if (!isMounted || (loading && (!assets || assets.length === 0))) return (
     <div className="flex items-center justify-center h-screen bg-[#0d081a]">
-      <p className="text-white text-xl font-light tracking-[0.3em] animate-pulse">NEXUS TERMINAL CONNECTING...</p>
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-12 h-12 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+        <p className="text-white text-xs tracking-[0.4em] font-light uppercase">Nexus Terminal Booting...</p>
+      </div>
     </div>
   );
 
@@ -132,7 +138,8 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="flex h-screen bg-[#0d081a] text-white font-sans antialiased overflow-hidden">
+    <div className="flex h-screen bg-[#0d081a] text-white font-sans antialiased overflow-hidden selection:bg-violet-500/30">
+      
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,#1e1435,transparent)] pointer-events-none" />
 
       {/* SIDEBAR */}
@@ -155,7 +162,7 @@ export default function Dashboard() {
       </motion.aside>
 
       {/* MAIN VIEW */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar relative z-10 bg-transparent">
+      <div className="flex-1 overflow-y-auto custom-scrollbar relative z-10">
         <div className="p-8 lg:p-12 max-w-[1700px] mx-auto pb-32">
           
           <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-10 mb-12">
@@ -164,32 +171,42 @@ export default function Dashboard() {
                 {selectedAsset?.image && <img src={selectedAsset.image} alt="" className="w-full h-full object-contain" />}
               </div>
               <div>
-                <div className="flex items-center gap-4">
-                  <h1 className="text-5xl font-normal text-white tracking-tight">{selectedAsset?.name}</h1>
-                  <span className="text-2xl text-white/40 font-light uppercase">{selectedAsset?.symbol}</span>
+                <div className="flex items-center gap-5">
+                  <h1 className="text-5xl font-normal text-white tracking-tight leading-none">{selectedAsset?.name || 'Syncing Stream'}</h1>
+                  <span className="text-2xl text-violet-400/40 font-bold uppercase tracking-widest">{selectedAsset?.symbol}</span>
                 </div>
-                <div className="flex items-center gap-6 mt-2">
-                  <span className="text-4xl font-normal text-white tabular-nums">
+                <div className="flex items-center gap-8 mt-4">
+                  <span className="text-5xl font-normal text-white tabular-nums tracking-tighter">
                     ${selectedAsset?.current_price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 })}
                   </span>
-                  <div className={`flex items-center gap-2 text-xl font-medium ${selectedAsset?.price_change_percentage_24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {selectedAsset?.price_change_percentage_24h >= 0 ? '+' : ''}{selectedAsset?.price_change_percentage_24h?.toFixed(2)}%
+                  <div className={`flex items-center gap-2 text-xl font-medium px-4 py-1 rounded-xl ${selectedAsset?.price_change_percentage_24h >= 0 ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10'}`}>
+                    {selectedAsset?.price_change_percentage_24h >= 0 ? <ArrowUp size={24} /> : <ArrowDown size={24} />}
+                    {Math.abs(selectedAsset?.price_change_percentage_24h || 0).toFixed(2)}%
                   </div>
                 </div>
               </div>
             </div>
             <div className="flex items-center gap-4">
-               <button onClick={() => exportToCSV(assets, 'nexus-audit')} className="text-white hover:underline text-xs font-medium uppercase tracking-widest">Audit Terminal</button>
-               <ConnectButton />
+              <ConnectButton />
             </div>
           </header>
 
+          {storeError && (
+            <div className="bg-red-500/10 border border-red-500/20 text-red-200 p-6 rounded-3xl mb-12 flex justify-between items-center backdrop-blur-xl">
+              <div className="flex items-center gap-4 text-lg font-medium">
+                <Info size={24} />
+                <span>{storeError}</span>
+              </div>
+              <button onClick={() => fetchAssets()} className="bg-white text-black px-8 py-3 rounded-2xl font-black text-sm uppercase tracking-widest hover:scale-105 transition-all">Retry Feed</button>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-16">
-            <div className="xl:col-span-8 flex flex-col gap-12">
+            <div className="xl:col-span-8 flex flex-col gap-16">
               
-              <div className="bg-black/40 border border-white/10 rounded-[2.5rem] p-8 min-h-[600px] flex flex-col relative overflow-visible">
+              <div className="bg-[#0c0a1f]/40 border border-white/10 rounded-[2.5rem] p-10 min-h-[600px] flex flex-col relative overflow-visible shadow-2xl backdrop-blur-md">
                 {isHistoryLoading && (
-                  <div className="absolute inset-0 bg-[#0d081a]/95 backdrop-blur-xl z-30 flex items-center justify-center">
+                  <div className="absolute inset-0 bg-[#0d081a]/80 backdrop-blur-sm z-30 flex items-center justify-center rounded-[2.5rem]">
                     <RefreshCw className="animate-spin text-violet-500" size={32} />
                   </div>
                 )}
@@ -207,8 +224,8 @@ export default function Dashboard() {
                     ))}
                   </div>
                   <div className="text-[10px] font-bold text-violet-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-                    TradingView Engine Precision
+                    <div className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse"></div>
+                    Engine V5 Precision
                   </div>
                 </div>
 
@@ -216,15 +233,15 @@ export default function Dashboard() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-20 gap-y-1">
-                <StatRow label="Market Cap" value={`$${(selectedAsset?.market_cap / 1e9).toFixed(3)}B`} />
-                <StatRow label="Circulating Supply" value={`${(selectedAsset?.circulating_supply / 1e6).toFixed(2)}M ${selectedAsset?.symbol?.toUpperCase()}`} />
-                <StatRow label="Volume (24h)" value={`$${(selectedAsset?.total_volume / 1e9).toFixed(3)}B`} />
+                <StatRow label="Market Cap" value={`$${(selectedAsset?.market_cap / 1e9 || 0).toFixed(3)}B`} />
+                <StatRow label="Circulating Supply" value={`${(selectedAsset?.circulating_supply / 1e6 || 0).toFixed(2)}M ${selectedAsset?.symbol?.toUpperCase() || ''}`} />
+                <StatRow label="Volume (24h)" value={`$${(selectedAsset?.total_volume / 1e9 || 0).toFixed(3)}B`} />
                 <StatRow label="Total Supply" value={selectedAsset?.total_supply ? `${(selectedAsset.total_supply / 1e6).toFixed(2)}M` : '--'} />
-                <StatRow label="Day's Range" value={`$${selectedAsset?.low_24h?.toLocaleString()} - $${selectedAsset?.high_24h?.toLocaleString()}`} />
+                <StatRow label="Day's Range" value={`$${selectedAsset?.low_24h?.toLocaleString() || '0'} - $${selectedAsset?.high_24h?.toLocaleString() || '0'}`} />
                 <StatRow label="Max Supply" value={selectedAsset?.max_supply ? `${(selectedAsset.max_supply / 1e6).toFixed(2)}M` : '∞'} />
-                <StatRow label="All-time High" value={`$${selectedAsset?.ath?.toLocaleString()}`} />
+                <StatRow label="All-time High" value={`$${selectedAsset?.ath?.toLocaleString() || '0'}`} />
                 <StatRow label="Genesis Date" value={selectedAsset?.genesis_date || '2009-01-03'} />
-                <StatRow label="All-time Low" value={`$${selectedAsset?.atl?.toLocaleString()}`} />
+                <StatRow label="All-time Low" value={`$${selectedAsset?.atl?.toLocaleString() || '0'}`} />
                 <StatRow label="Fully Diluted Val." value={`$${(selectedAsset?.fully_diluted_valuation / 1e9 || 0).toFixed(3)}B`} />
               </div>
             </div>
@@ -244,13 +261,13 @@ export default function Dashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {assets.slice(0, 15).map((asset) => (
-                        <tr key={asset.id} onClick={() => setSelectedAsset(asset.id)} className={`border-b border-white/[0.03] last:border-0 hover:bg-violet-500/10 cursor-pointer transition-colors ${selectedAssetId === asset.id ? 'bg-white/10' : ''}`}>
+                      {assets?.slice(0, 15).map((asset) => (
+                        <tr key={asset.id} onClick={() => setSelectedAsset(asset.id)} className={`border-b border-white/[0.03] last:border-0 hover:bg-violet-500/10 cursor-pointer transition-all ${selectedAssetId === asset.id ? 'bg-white/10' : ''}`}>
                           <td className="p-5">
-                            <div className="font-bold text-sm text-white">{asset.symbol.toUpperCase()}</div>
+                            <div className="font-bold text-sm text-white">{asset.symbol?.toUpperCase()}</div>
                             <div className="text-[10px] text-white/30 truncate max-w-[100px]">{asset.name}</div>
                           </td>
-                          <td className="p-5 text-right font-normal text-sm tabular-nums">${asset.current_price.toLocaleString()}</td>
+                          <td className="p-5 text-right font-normal text-sm tabular-nums">${asset.current_price?.toLocaleString()}</td>
                           <td className="p-5 text-right">
                             <div className={`inline-block font-bold text-[10px] px-2 py-1 rounded ${asset.price_change_percentage_24h >= 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
                               {asset.price_change_percentage_24h >= 0 ? '+' : ''}{asset.price_change_percentage_24h?.toFixed(2)}%
