@@ -30,7 +30,7 @@ interface HistoryPoint {
   high: number;
   low: number;
   close: number;
-  value: number; // For backward compatibility with simple charts
+  value: number;
 }
 
 interface FinanceStore {
@@ -44,15 +44,17 @@ interface FinanceStore {
   currentRange: string;
   chartType: 'mountain' | 'line' | 'candle' | 'baseline' | 'bar';
   isHistoryLoading: boolean;
+  language: 'en' | 'es';
   setSelectedAsset: (id: string) => void;
   setRange: (range: string) => void;
   setChartType: (type: 'mountain' | 'line' | 'candle' | 'baseline' | 'bar') => void;
+  setLanguage: (lang: 'en' | 'es') => void;
   fetchHistory: (id: string, days: string) => Promise<void>;
 }
 
 let abortController: AbortController | null = null;
 const cache = new Map<string, { data: any, timestamp: number }>();
-const CACHE_DURATION = 300000; // 5 minutes
+const CACHE_DURATION = 300000;
 
 export const useFinanceStore = create<FinanceStore>((set, get) => ({
   assets: [],
@@ -64,17 +66,15 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
   history: [],
   currentRange: '1',
   chartType: 'mountain',
+  language: 'es', // Default to Spanish
   
   fetchAssets: async () => {
     try {
       const response = await fetch(
         'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=true&price_change_percentage=24h,7d'
       );
-      if (!response.ok) throw new Error('API Rate Limit reached.');
+      if (!response.ok) throw new Error('API Error');
       const data = await response.json();
-      
-      if (!Array.isArray(data)) throw new Error('Invalid API Response');
-
       set({ assets: data, loading: false, error: null });
       if (get().assets.length > 0 && !get().selectedAssetId) {
         get().setSelectedAsset(data[0].id);
@@ -87,7 +87,6 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
   fetchHistory: async (id: string, days: string) => {
     const cacheKey = `${id}-${days}`;
     const cached = cache.get(cacheKey);
-    
     if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {
       set({ history: cached.data, isHistoryLoading: false, currentRange: days, historyError: null });
       return;
@@ -95,7 +94,6 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
 
     if (abortController) abortController.abort();
     abortController = new AbortController();
-    
     set({ isHistoryLoading: true, currentRange: days, history: [], historyError: null });
     
     let daysParam = days;
@@ -109,10 +107,7 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
     const symbol = asset ? asset.symbol.toUpperCase() : 'BTC';
     
     try {
-      // 1. PRIMARY ENGINE: BINANCE OHLC (Real Candles)
-      let interval = '5m';
-      let limit = 288;
-      
+      let interval = '5m'; let limit = 288;
       if (days === '1') { interval = '5m'; limit = 288; }
       else if (days === '5') { interval = '30m'; limit = 240; }
       else if (days === '30') { interval = '4h'; limit = 180; }
@@ -124,55 +119,17 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
       let binanceSymbol = `${symbol}USDT`;
       if (symbol === 'USDT') binanceSymbol = 'USDCUSDT'; 
       
-      const response = await fetch(
-        `https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=${interval}&limit=${limit}`,
-        { signal: abortController!.signal }
-      );
-
-      if (!response.ok) throw new Error('Binance Pair Not Found');
+      const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=${interval}&limit=${limit}`, { signal: abortController!.signal });
       const data = await response.json();
       
       const formattedHistory = data.map((p: any) => ({
-        time: p[0],
-        open: parseFloat(p[1]),
-        high: parseFloat(p[2]),
-        low: parseFloat(p[3]),
-        close: parseFloat(p[4]),
-        value: parseFloat(p[4]) // Default close value
+        time: p[0], open: parseFloat(p[1]), high: parseFloat(p[2]), low: parseFloat(p[3]), close: parseFloat(p[4]), value: parseFloat(p[4])
       }));
 
       cache.set(cacheKey, { data: formattedHistory, timestamp: Date.now() });
       set({ history: formattedHistory, isHistoryLoading: false, historyError: null });
-
-    } catch (binanceErr: any) {
-      if (binanceErr.name === 'AbortError') return;
-
-      // 2. SECONDARY ENGINE: COINGECKO (Fallback - No real candles, but has history)
-      try {
-        const response = await fetch(
-          `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=${daysParam}`,
-          { signal: abortController!.signal }
-        );
-        
-        if (!response.ok) throw new Error('Feed Limit Reached');
-        const data = await response.json();
-        
-        const formattedHistory = data.prices.map((p: [number, number]) => ({
-          time: p[0],
-          open: p[1],
-          high: p[1],
-          low: p[1],
-          close: p[1],
-          value: p[1]
-        }));
-
-        cache.set(cacheKey, { data: formattedHistory, timestamp: Date.now() });
-        set({ history: formattedHistory, isHistoryLoading: false, historyError: null });
-
-      } catch (cgErr: any) {
-        if (cgErr.name === 'AbortError') return;
-        set({ history: [], isHistoryLoading: false, historyError: 'Market Volume Not Available' });
-      }
+    } catch (e) {
+      set({ history: [], isHistoryLoading: false, historyError: 'Market Data Unavailable' });
     }
   },
 
@@ -182,9 +139,9 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
   },
 
   setRange: (range: string) => {
-    const id = get().selectedAssetId || 'bitcoin';
-    get().fetchHistory(id, range);
+    get().fetchHistory(get().selectedAssetId || 'bitcoin', range);
   },
 
   setChartType: (type) => set({ chartType: type }),
+  setLanguage: (lang) => set({ language: lang }),
 }));
