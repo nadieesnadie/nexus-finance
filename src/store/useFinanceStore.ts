@@ -110,7 +110,7 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
 
       let processedPrices = data.prices;
       
-      // Interpolate data to achieve the exact minute-by-minute (or 10m/1h) granularity required
+      // Interpolation to simulate minute-by-minute points
       const interpolate = (prices: [number, number][], targetIntervalMs: number) => {
         const result: [number, number][] = [];
         for (let i = 0; i < prices.length - 1; i++) {
@@ -121,12 +121,10 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
           const timeDiff = p2[0] - p1[0];
           const steps = Math.floor(timeDiff / targetIntervalMs);
           
-          // Add interpolated points if the gap is larger than target and within reasonable bounds
           if (steps > 1 && steps < 60) {
             const timeStep = timeDiff / steps;
             const priceStep = (p2[1] - p1[1]) / steps;
             for (let j = 1; j < steps; j++) {
-              // Add minor jitter to make the interpolation feel organic but mathematically sound
               const jitter = priceStep * 0.0001 * (Math.random() - 0.5);
               result.push([p1[0] + timeStep * j, p1[1] + (priceStep * j) + jitter]);
             }
@@ -136,13 +134,12 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
         return result;
       };
 
-      // 1D -> 1 minute | 5D -> 10 minutes | 1M -> 1 hour
       if (days === '1') {
-        processedPrices = interpolate(data.prices, 60 * 1000);
+        processedPrices = interpolate(data.prices, 60 * 1000); // 1 minute points
       } else if (days === '5') {
-        processedPrices = interpolate(data.prices, 10 * 60 * 1000);
+        processedPrices = interpolate(data.prices, 10 * 60 * 1000); // 10 minute points
       } else if (days === '30') {
-        processedPrices = interpolate(data.prices, 60 * 60 * 1000);
+        processedPrices = interpolate(data.prices, 60 * 60 * 1000); // 1 hour points
       }
 
       const formattedHistory = processedPrices.map((p: [number, number]) => ({
