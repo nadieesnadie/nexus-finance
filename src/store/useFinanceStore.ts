@@ -116,7 +116,6 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
         result.push(p1);
         const timeDiff = p2[0] - p1[0];
         const steps = Math.floor(timeDiff / targetIntervalMs);
-        // INCREASED LIMIT TO 2500 TO ENSURE MINUTE ACCURACY
         if (steps > 1 && steps < 2500) {
           const timeStep = timeDiff / steps;
           const priceStep = (p2[1] - p1[1]) / steps;
@@ -132,24 +131,28 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
 
     try {
       let formattedHistory;
-      let binanceInterval = '1m'; // FORCE BINANCE TO 1 MINUTE DATA DIRECTLY
-      if (days === '1') binanceInterval = '1m';
-      else if (days === '5') binanceInterval = '5m';
-      else if (days === '30') binanceInterval = '15m';
-      else binanceInterval = '1d';
+      let binanceInterval = '1m';
+      let binanceLimit = 1000;
+
+      if (days === '1') { binanceInterval = '1m'; binanceLimit = 1440; }
+      else if (days === '5') { binanceInterval = '5m'; binanceLimit = 1440; }
+      else if (days === '30') { binanceInterval = '15m'; binanceLimit = 1000; }
+      else if (days === '180' || days === 'ytd') { binanceInterval = '1h'; binanceLimit = 1000; }
+      else if (days === '365') { binanceInterval = '4h'; binanceLimit = 1000; }
+      else if (days === '1825') { binanceInterval = '1d'; binanceLimit = 1825; }
+      else { binanceInterval = '1w'; binanceLimit = 1000; }
 
       let bSym = `${symbol}USDT`;
       if (symbol === 'USDT') bSym = 'USDCUSDT';
 
       try {
-        const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${bSym}&interval=${binanceInterval}&limit=1000`, { signal: abortController!.signal });
+        const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${bSym}&interval=${binanceInterval}&limit=${binanceLimit}`, { signal: abortController!.signal });
         const bData = await res.json();
         
         let processedData = bData.map((p: any) => [parseInt(p[0]), parseFloat(p[4])]);
         
-        // Exact Interpolation to fill any small gaps from Binance
-        if (days === '1') processedData = interpolate(processedData as any, 60 * 1000); // 1 minute
-        else if (days === '5') processedData = interpolate(processedData as any, 10 * 60 * 1000); // 10 minutes
+        if (days === '1') processedData = interpolate(processedData as any, 60 * 1000);
+        else if (days === '5') processedData = interpolate(processedData as any, 10 * 60 * 1000);
 
         formattedHistory = processedData.map((p: any) => ({
           time: p[0], open: p[1], high: p[1], low: p[1], close: p[1], value: p[1]
@@ -161,7 +164,6 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
         let pData = cgData.prices;
         if (days === '1') pData = interpolate(pData, 60 * 1000);
         else if (days === '5') pData = interpolate(pData, 10 * 60 * 1000);
-
         formattedHistory = pData.map((p: any) => ({
           time: p[0], open: p[1], high: p[1], low: p[1], close: p[1], value: p[1]
         }));
