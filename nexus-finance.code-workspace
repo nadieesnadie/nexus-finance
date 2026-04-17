@@ -1,0 +1,16 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"typescript.tsdk": "node_modules/typescript/lib",
+		"editor.fontSize": 14,
+		"editor.tabSize": 2,
+		"files.exclude": {
+			"**/.next": true,
+			"**/node_modules": true
+		}
+	}
+}
