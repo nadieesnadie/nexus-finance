@@ -6,7 +6,7 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine 
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TrendingUp, Activity, ExternalLink, Info, ArrowUp, ArrowDown, Sparkles, LayoutDashboard, Wallet, Settings, Menu, RefreshCw, ShieldCheck } from 'lucide-react';
+import { TrendingUp, Activity, ExternalLink, Info, ArrowUp, ArrowDown, Sparkles, LayoutDashboard, Wallet, Settings, Menu, RefreshCw, ShieldCheck, DatabaseZap } from 'lucide-react';
 import { exportToCSV } from '@/lib/utils';
 import { format, startOfDay, addHours, addDays, startOfMonth, addMonths, startOfYear, addYears } from 'date-fns';
 
@@ -101,13 +101,13 @@ export default function Dashboard() {
   if (!assets || assets.length === 0) return (
     <div className="flex items-center justify-center h-screen bg-[#130b29]">
       <div className="flex flex-col items-center gap-6 p-8 bg-white/5 border border-white/10 rounded-3xl max-w-lg text-center backdrop-blur-xl">
-        <Info size={48} className="text-red-500" />
-        <h2 className="text-white text-2xl font-bold tracking-tight">Feed Disconnected</h2>
+        <DatabaseZap size={48} className="text-red-500" />
+        <h2 className="text-white text-2xl font-bold tracking-tight">Institutional Feed Error</h2>
         <p className="text-white/60 text-sm leading-relaxed">
-          The connection to the market data provider has been interrupted. 
+          The primary market data stream is temporarily unavailable. 
         </p>
         <button onClick={() => { window.location.reload(); }} className="mt-4 px-8 py-3 bg-white text-black rounded-xl font-bold text-xs uppercase tracking-widest hover:scale-105 transition-transform">
-          Reboot Terminal
+          Reset Connection
         </button>
       </div>
     </div>
@@ -188,12 +188,20 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-16">
             <div className="xl:col-span-8 flex flex-col gap-12">
               
-              {/* RECHARTS WITH HIGH DENSITY & CROSSHAIR */}
+              {/* CHART AREA */}
               <div className="bg-black/40 border border-white/10 rounded-[3.5rem] p-10 min-h-[600px] flex flex-col relative overflow-visible shadow-2xl backdrop-blur-md">
                 {isHistoryLoading && (
                   <div className="absolute inset-0 bg-[#130b29]/80 backdrop-blur-xl z-30 flex items-center justify-center flex-col gap-6 rounded-[3.5rem]">
                     <RefreshCw className="animate-spin text-violet-500" size={40} />
-                    <p className="text-violet-200 text-xs font-black tracking-[0.4em] uppercase animate-pulse">Syncing Precision Feed</p>
+                    <p className="text-violet-200 text-xs font-black tracking-[0.4em] uppercase animate-pulse">Scanning Feed</p>
+                  </div>
+                )}
+
+                {/* ERROR STATE: VOLUME NOT AVAILABLE */}
+                {!isHistoryLoading && historyError && (
+                  <div className="absolute inset-0 z-20 flex items-center justify-center flex-col gap-4">
+                    <DatabaseZap size={32} className="text-white/20" />
+                    <p className="text-white/40 font-bold uppercase tracking-[0.3em] text-sm">volume not available</p>
                   </div>
                 )}
                 
@@ -210,17 +218,8 @@ export default function Dashboard() {
                     ))}
                   </div>
                   <div className="flex items-center gap-3 text-[10px] font-bold text-violet-400 uppercase tracking-[0.2em]">
-                    {historyError ? (
-                       <div className="flex items-center gap-2 text-yellow-500 bg-yellow-500/10 px-3 py-1 rounded-full border border-yellow-500/20">
-                         <Info size={12} />
-                         <span>Mode: Backup Proxy</span>
-                       </div>
-                    ) : (
-                      <div className="flex items-center gap-2 text-green-400 bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20">
-                        <ShieldCheck size={12} />
-                        <span>Mode: Institutional Feed</span>
-                      </div>
-                    )}
+                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+                    <span>Mode: Institutional Feed</span>
                   </div>
                 </div>
 
@@ -321,9 +320,13 @@ export default function Dashboard() {
                             <div className="font-bold text-sm text-white tracking-tighter">{asset.symbol?.toUpperCase() || ''}</div>
                             <div className="text-[10px] text-white/30 truncate max-w-[100px]">{asset.name || ''}</div>
                           </td>
-                          <td className="p-6 text-right font-normal text-sm tabular-nums">${(asset.current_price || 0) < 1 ? (asset.current_price || 0).toFixed(4) : (asset.current_price || 0).toLocaleString()}</td>
+                          <td className="p-6 text-right font-normal text-sm tabular-nums">
+                            ${(asset.current_price || 0) < 1 ? (asset.current_price || 0).toFixed(4) : (asset.current_price || 0).toLocaleString()}
+                          </td>
                           <td className="p-6 text-right">
-                            <div className={`inline-block font-bold text-[10px] px-2 py-1 rounded ${(asset.price_change_percentage_24h || 0) >= 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>{(asset.price_change_percentage_24h || 0) >= 0 ? '+' : ''}{(asset.price_change_percentage_24h || 0).toFixed(2)}%</div>
+                            <div className={`inline-block font-bold text-[10px] px-2 py-1 rounded ${(asset.price_change_percentage_24h || 0) >= 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                              {(asset.price_change_percentage_24h || 0) >= 0 ? '+' : ''}{(asset.price_change_percentage_24h || 0).toFixed(2)}%
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -331,6 +334,7 @@ export default function Dashboard() {
                   </table>
                 </div>
               </div>
+
               <div className="flex flex-col gap-6">
                 <h3 className="text-white text-[11px] font-bold tracking-[0.3em] uppercase mb-4 px-4 opacity-40 text-center">Market Liquidity (Top 50)</h3>
                 <div className="flex flex-col max-h-[600px] overflow-y-auto custom-scrollbar border border-white/5 rounded-[2.5rem] bg-black/20">
@@ -340,7 +344,9 @@ export default function Dashboard() {
                         <img src={asset.image} alt="" className="w-8 h-8 object-contain" />
                         <div className={`font-bold text-base tracking-tighter ${selectedAssetId === asset.id ? 'text-black' : 'text-white'}`}>{asset.name || ''}</div>
                       </div>
-                      <div className={`text-sm font-normal tabular-nums ${selectedAssetId === asset.id ? 'text-black' : 'text-white'}`}>${(asset.current_price || 0) < 1 ? (asset.current_price || 0).toFixed(4) : (asset.current_price || 0).toLocaleString()}</div>
+                      <div className={`text-sm font-normal tabular-nums ${selectedAssetId === asset.id ? 'text-black' : 'text-white'}`}>
+                        ${(asset.current_price || 0) < 1 ? (asset.current_price || 0).toFixed(4) : (asset.current_price || 0).toLocaleString()}
+                      </div>
                     </div>
                   ))}
                 </div>
