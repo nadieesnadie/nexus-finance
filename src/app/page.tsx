@@ -12,55 +12,55 @@ import { format, startOfDay, addHours, addDays, startOfMonth, addMonths, startOf
 
 const translations = {
   en: {
-    terminal: 'TERMINAL',
-    syncing: 'SYNCING FEED...',
-    feed_error: 'FEED ERROR',
-    feed_msg: 'Market data stream unavailable.',
-    reset_conn: 'RESET',
-    audit: 'AUDIT CSV',
-    about: 'ABOUT',
+    terminal: 'Terminal',
+    syncing: 'Syncing feed...',
+    feed_error: 'Feed Error',
+    feed_msg: 'Market data unavailable.',
+    reset_conn: 'Reset',
+    audit: 'Audit CSV',
+    about: 'About',
     ranking: 'global market cap',
     milestone: 'historical milestone',
     intensity: 'Current intraday intensity shows a performance delta of',
     participation: 'with high institutional participation.',
-    market_intensity: 'MARKET INTENSITY',
-    liquidity: 'MARKET LIQUIDITY (TOP 50)',
-    powered: 'POWERED BY',
+    market_intensity: 'Market Intensity',
+    liquidity: 'Market Liquidity (Top 50)',
+    powered: 'Powered by',
     stats: {
-      mcap: 'MARKET CAP',
-      supply: 'CIRCULATING SUPPLY',
-      vol: 'VOLUME (24H)',
-      total_supply: 'TOTAL SUPPLY',
-      range: 'DAY RANGE',
-      ath: 'ALL-TIME HIGH',
-      genesis: 'GENESIS DATE',
-      fdv: 'FULLY DILUTED VAL.'
+      mcap: 'Market Cap',
+      supply: 'Circulating Supply',
+      vol: 'Volume (24h)',
+      total_supply: 'Total Supply',
+      range: 'Day Range',
+      ath: 'All-Time High',
+      genesis: 'Genesis Date',
+      fdv: 'Fully Diluted Val.'
     }
   },
   es: {
-    terminal: 'TERMINAL',
-    syncing: 'SINCRONIZANDO...',
-    feed_error: 'ERROR DE FEED',
+    terminal: 'Terminal',
+    syncing: 'Sincronizando...',
+    feed_error: 'Error de Feed',
     feed_msg: 'Flujo de datos no disponible.',
-    reset_conn: 'REINICIAR',
-    audit: 'AUDITAR CSV',
-    about: 'SOBRE',
+    reset_conn: 'Reiniciar',
+    audit: 'Auditar CSV',
+    about: 'Sobre',
     ranking: 'capitalización global',
     milestone: 'hito histórico',
     intensity: 'La intensidad intradía muestra un delta de',
     participation: 'con alta participación institucional.',
-    market_intensity: 'INTENSIDAD DE MERCADO',
-    liquidity: 'LIQUIDEZ DE MERCADO (TOP 50)',
-    powered: 'POTENCIADO POR',
+    market_intensity: 'Intensidad de Mercado',
+    liquidity: 'Liquidez de Mercado (Top 50)',
+    powered: 'Potenciado por',
     stats: {
-      mcap: 'CAP. DE MERCADO',
-      supply: 'SUMINISTRO CIRC.',
-      vol: 'VOLUMEN (24H)',
-      total_supply: 'SUMINISTRO TOTAL',
-      range: 'RANGO DEL DÍA',
-      ath: 'MÁXIMO HISTÓRICO',
-      genesis: 'FECHA GÉNESIS',
-      fdv: 'VALUACIÓN DILUIDA'
+      mcap: 'Cap. de Mercado',
+      supply: 'Suministro Circ.',
+      vol: 'Volumen (24h)',
+      total_supply: 'Suministro Total',
+      range: 'Rango del Día',
+      ath: 'Máximo Histórico',
+      genesis: 'Fecha Génesis',
+      fdv: 'Valuación Diluida'
     }
   }
 };
@@ -143,7 +143,7 @@ export default function Dashboard() {
     <div className="flex items-center justify-center h-screen bg-[#0a0518]">
       <div className="flex flex-col items-center gap-6">
         <div className="w-12 h-12 border-4 border-violet-500 border-t-white rounded-full animate-spin"></div>
-        <p className="text-white text-lg font-black tracking-[0.5em] animate-pulse uppercase">NEXUS CONNECTING</p>
+        <p className="text-white text-base font-bold uppercase animate-pulse">Nexus Connecting</p>
       </div>
     </div>
   );
@@ -165,7 +165,7 @@ export default function Dashboard() {
       
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,#1e0c3a,transparent)] pointer-events-none" />
 
-      {/* SIDEBAR: COLLAPSIBLE */}
+      {/* SIDEBAR */}
       <motion.aside 
         onHoverStart={() => setIsSidebarExpanded(true)}
         onHoverEnd={() => setIsSidebarExpanded(false)}
@@ -174,10 +174,10 @@ export default function Dashboard() {
         className="h-full border-r border-white/10 bg-[#0a0518]/95 backdrop-blur-3xl flex flex-col py-8 px-4 z-50 relative hidden lg:flex"
       >
         <div className="flex items-center gap-3 mb-16 px-2 overflow-hidden">
-          <div className="w-12 h-12 bg-white text-black flex items-center justify-center font-black text-2xl rounded shadow-[0_0_20px_rgba(255,255,255,0.2)] shrink-0">N</div>
+          <div className="w-10 h-10 bg-white text-black flex items-center justify-center font-bold text-xl rounded shrink-0 shadow-[0_0_20px_rgba(255,255,255,0.2)]">N</div>
           <AnimatePresence mode="wait">
             {isSidebarExpanded && (
-              <motion.span initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="text-white font-black text-xl tracking-tighter uppercase whitespace-nowrap">EXUS</motion.span>
+              <motion.span initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="text-white font-bold text-xl uppercase whitespace-nowrap">EXUS</motion.span>
             )}
           </AnimatePresence>
         </div>
@@ -196,9 +196,9 @@ export default function Dashboard() {
                 {selectedAsset?.image && <img src={selectedAsset.image} alt="" className="w-full h-full object-contain" />}
               </div>
               <div>
-                <div className="flex items-center gap-5">
+                <div className="flex items-center gap-4">
                   <h1 className="text-5xl font-normal text-white tracking-tight leading-none">{selectedAsset?.name || t.syncing}</h1>
-                  <span className="text-2xl text-white/40 font-light uppercase tracking-widest">{selectedAsset?.symbol}</span>
+                  <span className="text-2xl text-white/40 font-light uppercase">{selectedAsset?.symbol}</span>
                   <a href={`https://finance.yahoo.com/quote/${selectedAsset?.symbol?.toUpperCase()}-USD`} target="_blank" className="text-white/20 hover:text-violet-400 transition-all">
                     <ExternalLink size={20} />
                   </a>
@@ -217,11 +217,11 @@ export default function Dashboard() {
             
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 bg-white/5 p-1 rounded-xl border border-white/10 shadow-xl">
-                <button onClick={() => exportToCSV(assets, 'nexus-audit')} className="px-4 py-2 text-white hover:text-violet-300 text-[10px] font-bold uppercase tracking-widest transition-all hover:bg-white/5 rounded-lg">{t.audit}</button>
+                <button onClick={() => exportToCSV(assets, 'nexus-audit')} className="px-4 py-2 text-white hover:text-violet-300 text-[10px] font-bold uppercase transition-all hover:bg-white/5 rounded-lg">{t.audit}</button>
                 <div className="w-px h-4 bg-white/10" />
                 <button 
                   onClick={() => setLanguage(language === 'en' ? 'es' : 'en')} 
-                  className="flex items-center gap-2 px-5 py-2 bg-violet-600 text-white text-[10px] font-bold uppercase tracking-widest transition-all hover:bg-violet-500 rounded-lg shadow-[0_0_15px_rgba(139,92,246,0.3)]"
+                  className="flex items-center gap-2 px-5 py-2 bg-violet-600 text-white text-[10px] font-bold uppercase transition-all hover:bg-violet-500 rounded-lg shadow-[0_0_15px_rgba(139,92,246,0.3)]"
                 >
                   <Globe size={14} />
                   {language.toUpperCase()}
@@ -234,12 +234,11 @@ export default function Dashboard() {
             
             <div className="xl:col-span-8 flex flex-col gap-12">
               
-              {/* MAIN CHART - THE PROTAGONIST */}
               <div className="bg-black/30 border border-white/10 rounded-[2.5rem] p-10 min-h-[650px] flex flex-col relative overflow-visible shadow-[0_0_50px_rgba(0,0,0,0.5)] backdrop-blur-md">
                 {isHistoryLoading && (
                   <div className="absolute inset-0 bg-[#0a0518]/90 backdrop-blur-xl z-30 flex items-center justify-center flex-col gap-6 rounded-[2.5rem]">
                     <RefreshCw className="animate-spin text-violet-500" size={40} />
-                    <p className="text-violet-200 text-[10px] font-black tracking-[0.5em] uppercase animate-pulse">{t.syncing}</p>
+                    <p className="text-violet-200 text-[10px] font-bold uppercase animate-pulse">{t.syncing}</p>
                   </div>
                 )}
                 
@@ -247,22 +246,22 @@ export default function Dashboard() {
                   <div className="flex gap-4">
                     <div className="flex bg-black/40 rounded-xl overflow-hidden border border-white/10 shadow-2xl">
                       {ranges.map((r) => (
-                        <button key={r.label} onClick={() => setRange(r.value)} className={`px-6 py-2.5 text-[10px] font-black tracking-widest transition-all border-r border-white/10 last:border-0 uppercase ${currentRange === r.value ? 'bg-white text-black' : 'text-white/40 hover:text-white'}`}>
+                        <button key={r.label} onClick={() => setRange(r.value)} className={`px-6 py-2.5 text-[10px] font-bold transition-all border-r border-white/10 last:border-0 uppercase ${currentRange === r.value ? 'bg-white text-black' : 'text-white/40 hover:text-white'}`}>
                           {r.label}
                         </button>
                       ))}
                     </div>
                     <div className="flex bg-black/40 rounded-xl overflow-hidden border border-white/10 shadow-2xl">
                       {chartModes.map((m) => (
-                        <button key={m.id} onClick={() => setChartType(m.id as any)} className={`px-4 py-2.5 text-[10px] font-black transition-all border-r border-white/10 last:border-0 ${chartType === m.id ? 'bg-violet-600 text-white shadow-[0_0_20px_rgba(139,92,246,0.5)]' : 'text-white/40 hover:text-white'}`}>
+                        <button key={m.id} onClick={() => setChartType(m.id as any)} className={`px-4 py-2.5 text-[10px] font-bold transition-all border-r border-white/10 last:border-0 ${chartType === m.id ? 'bg-violet-600 text-white shadow-[0_0_20px_rgba(139,92,246,0.5)]' : 'text-white/40 hover:text-white'}`}>
                           {m.icon}
                         </button>
                       ))}
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 text-[10px] font-black text-green-400 uppercase tracking-[0.2em] bg-green-500/10 px-4 py-2 rounded-full border border-green-500/20 shadow-2xl">
-                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shadow-[0_0_10px_#22c55e]"></div>
-                    Institutional Feed Online
+                  <div className="flex items-center gap-2 text-[10px] font-bold text-green-400 bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20 shadow-2xl">
+                    <div className="w-1 h-1 rounded-full bg-green-500 animate-pulse"></div>
+                    Feed Online
                   </div>
                 </div>
 
@@ -298,20 +297,20 @@ export default function Dashboard() {
                   <AnimatePresence>
                     {hoverData && (
                       <>
-                        <div className="absolute right-0 bg-white text-black px-3 py-1.5 rounded-l font-black text-xs z-40 tabular-nums shadow-[0_0_20px_rgba(255,255,255,0.2)] border border-white/10" style={{ top: mousePos.y - 12 }}> ${hoverData.close.toLocaleString(undefined, { maximumFractionDigits: 4 })} </div>
-                        <div className="absolute bottom-[20px] bg-white text-black px-4 py-2 rounded font-black text-xs z-40 whitespace-nowrap shadow-[0_0_20px_rgba(255,255,255,0.2)] border border-white/10" style={{ left: mousePos.x - 60 }}> {format(new Date(hoverData.time), 'HH:mm:ss')} </div>
+                        <div className="absolute right-0 bg-white text-black px-3 py-1.5 rounded-l font-bold text-xs z-40 tabular-nums shadow-[0_0_20px_rgba(255,255,255,0.2)] border border-white/10" style={{ top: mousePos.y - 12 }}> ${hoverData.close.toLocaleString(undefined, { maximumFractionDigits: 4 })} </div>
+                        <div className="absolute bottom-[20px] bg-white text-black px-4 py-2 rounded font-bold text-xs z-40 whitespace-nowrap shadow-[0_0_20px_rgba(255,255,255,0.2)] border border-white/10" style={{ left: mousePos.x - 60 }}> {format(new Date(hoverData.time), 'HH:mm:ss')} </div>
                       </>
                     )}
                   </AnimatePresence>
                 </div>
                 <div className="flex justify-end mt-4">
-                  <a href={currentRange === '1' || currentRange === '5' ? "https://www.binance.com" : "https://www.coingecko.com"} target="_blank" className="flex items-center gap-2 text-[10px] font-black text-white hover:text-violet-400 transition-all uppercase tracking-[0.4em] opacity-30 hover:opacity-100">
+                  <a href={currentRange === '1' || currentRange === '5' ? "https://www.binance.com" : "https://www.coingecko.com"} target="_blank" className="flex items-center gap-2 text-[10px] font-bold text-white/20 hover:text-white uppercase transition-all">
                     {t.powered} {currentRange === '1' || currentRange === '5' ? 'Binance API' : 'CoinGecko Feed'} <ExternalLink size={12} />
                   </a>
                 </div>
               </div>
 
-              {/* TECHNICAL DATA: HIGH CONTRAST */}
+              {/* TECHNICAL DATA */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-24 gap-y-2">
                 <StatRow label={t.stats.mcap} value={`$${((selectedAsset?.market_cap || 0) / 1e9).toFixed(3)}B`} />
                 <StatRow label={t.stats.supply} value={`${((selectedAsset?.circulating_supply || 0) / 1e6).toFixed(2)}M ${selectedAsset?.symbol?.toUpperCase() || ''}`} />
@@ -329,7 +328,7 @@ export default function Dashboard() {
                    <Sparkles size={200} />
                 </div>
                 <div className="relative z-10">
-                  <h3 className="text-violet-300 text-xs font-black tracking-[0.5em] mb-8 uppercase flex items-center gap-3">
+                  <h3 className="text-violet-300 text-xs font-bold mb-8 uppercase flex items-center gap-3">
                     <Sparkles size={20} /> {t.about} {selectedAsset?.name}
                   </h3>
                   <p className="text-white text-2xl font-light leading-relaxed tracking-tight">
@@ -341,19 +340,19 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* RIGHT SIDE: YAHOO STYLE RANKING */}
+            {/* RIGHT SIDE */}
             <div className="xl:col-span-4 flex flex-col gap-12">
               <div>
-                <h3 className="text-violet-300 text-xs font-black tracking-[0.5em] uppercase mb-10 flex items-center gap-4">
+                <h3 className="text-violet-300 text-xs font-bold uppercase mb-10 flex items-center gap-4">
                   <Activity size={20} /> {t.market_intensity}
                 </h3>
                 <div className="bg-white/[0.02] border border-white/10 rounded-[2rem] overflow-hidden shadow-2xl">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b border-white/10 bg-white/[0.03]">
-                        <th className="p-6 text-[10px] font-black text-slate-100 uppercase tracking-widest">Symbol</th>
-                        <th className="p-6 text-[10px] font-black text-slate-100 uppercase tracking-widest text-right">Last</th>
-                        <th className="p-6 text-[10px] font-black text-slate-100 uppercase tracking-widest text-right">Delta</th>
+                        <th className="p-6 text-[10px] font-bold text-slate-100 uppercase">Symbol</th>
+                        <th className="p-6 text-[10px] font-bold text-slate-100 uppercase text-right">Last</th>
+                        <th className="p-6 text-[10px] font-bold text-slate-100 uppercase text-right">Delta</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -365,7 +364,7 @@ export default function Dashboard() {
                           </td>
                           <td className="p-6 text-right font-normal text-lg tabular-nums text-white">${(asset.current_price || 0).toLocaleString()}</td>
                           <td className="p-6 text-right">
-                            <div className={`inline-block font-black text-xs px-3 py-1.5 rounded-xl tabular-nums ${asset.price_change_percentage_24h >= 0 ? 'text-green-500 bg-green-500/10' : 'text-red-500 bg-red-500/10'}`}>
+                            <div className={`inline-block font-bold text-xs px-3 py-1.5 rounded-xl tabular-nums ${asset.price_change_percentage_24h >= 0 ? 'text-green-500 bg-green-500/10' : 'text-red-500 bg-red-500/10'}`}>
                               {asset.price_change_percentage_24h >= 0 ? '+' : ''}{(asset.price_change_percentage_24h || 0).toFixed(2)}%
                             </div>
                           </td>
@@ -389,7 +388,7 @@ function SidebarItem({ icon, label, active = false, expanded = false }: { icon: 
       <div className="shrink-0">{icon}</div>
       <AnimatePresence mode="wait">
         {expanded && (
-          <motion.span initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: 'auto' }} exit={{ opacity: 0, width: 0 }} className="text-lg font-black tracking-tighter uppercase whitespace-nowrap">{label}</motion.span>
+          <motion.span initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: 'auto' }} exit={{ opacity: 0, width: 0 }} className="text-lg font-bold tracking-tight uppercase whitespace-nowrap">{label}</motion.span>
         )}
       </AnimatePresence>
     </div>
@@ -399,7 +398,7 @@ function SidebarItem({ icon, label, active = false, expanded = false }: { icon: 
 function StatRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between items-center py-6 border-b border-white/5 last:border-0">
-      <span className="text-slate-200 text-[12px] font-black uppercase tracking-[0.3em]">{label}</span>
+      <span className="text-slate-200 text-[12px] font-bold uppercase">{label}</span>
       <span className="text-white text-2xl font-normal tabular-nums tracking-tighter">{value}</span>
     </div>
   );
