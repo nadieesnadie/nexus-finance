@@ -28,6 +28,7 @@ interface FinanceStore {
   assets: CryptoData[];
   loading: boolean;
   error: string | null;
+  historyError: string | null;
   fetchAssets: () => Promise<void>;
   selectedAssetId: string | null;
   history: { time: number; value: number }[];
@@ -47,6 +48,7 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
   loading: true,
   isHistoryLoading: false,
   error: null,
+  historyError: null,
   selectedAssetId: null,
   history: [],
   currentRange: '1',
@@ -56,9 +58,13 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
       const response = await fetch(
         'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=true&price_change_percentage=24h,7d'
       );
-      if (!response.ok) throw new Error('API Rate Limit. Retrying in 60s...');
+      if (!response.ok) throw new Error('API Rate Limit. Running in Fallback Mode.');
       const data = await response.json();
       
+      if (!Array.isArray(data)) {
+        throw new Error('Invalid API Response from Provider');
+      }
+
       const isInitialLoad = get().assets.length === 0;
       set({ assets: data, loading: false, error: null });
       
@@ -66,7 +72,31 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
         get().setSelectedAsset(data[0].id);
       }
     } catch (err: any) {
-      set({ error: err.message, loading: false });
+      const isInitialLoad = get().assets.length === 0;
+      
+      if (isInitialLoad) {
+        const fallbackData: CryptoData[] = [
+          {
+            id: 'bitcoin', symbol: 'btc', name: 'Bitcoin', current_price: 65430.20, image: 'https://assets.coingecko.com/coins/images/1/large/bitcoin.png', price_change_percentage_24h: 1.2, market_cap: 1200000000000, total_volume: 30000000000, high_24h: 66000, low_24h: 64000, ath: 73000, ath_date: '2024-03-14', atl: 67, atl_date: '2013-07-06', circulating_supply: 19600000, total_supply: 21000000, max_supply: 21000000, fully_diluted_valuation: 1300000000000, genesis_date: '2009-01-03', sparkline_in_7d: { price: Array(168).fill(65000) }
+          },
+          {
+            id: 'ethereum', symbol: 'eth', name: 'Ethereum', current_price: 3450.50, image: 'https://assets.coingecko.com/coins/images/279/large/ethereum.png', price_change_percentage_24h: 2.1, market_cap: 400000000000, total_volume: 15000000000, high_24h: 3600, low_24h: 3400, ath: 4891, ath_date: '2021-11-16', atl: 0.42, atl_date: '2015-10-21', circulating_supply: 120000000, total_supply: 120000000, max_supply: 120000000, fully_diluted_valuation: 400000000000, genesis_date: '2015-07-30', sparkline_in_7d: { price: Array(168).fill(3500) }
+          },
+          {
+            id: 'tether', symbol: 'usdt', name: 'Tether', current_price: 1.0002, image: 'https://assets.coingecko.com/coins/images/325/large/Tether.png', price_change_percentage_24h: 0.01, market_cap: 100000000000, total_volume: 40000000000, high_24h: 1.01, low_24h: 0.99, ath: 1.32, ath_date: '2018-07-24', atl: 0.57, atl_date: '2015-03-02', circulating_supply: 100000000000, total_supply: 100000000000, max_supply: 100000000000, fully_diluted_valuation: 100000000000, genesis_date: '2015-02-25', sparkline_in_7d: { price: Array(168).fill(1) }
+          },
+          {
+            id: 'solana', symbol: 'sol', name: 'Solana', current_price: 145.20, image: 'https://assets.coingecko.com/coins/images/4128/large/solana.png', price_change_percentage_24h: -1.5, market_cap: 60000000000, total_volume: 5000000000, high_24h: 150, low_24h: 140, ath: 260, ath_date: '2021-11-06', atl: 0.50, atl_date: '2020-05-11', circulating_supply: 400000000, total_supply: 500000000, max_supply: 500000000, fully_diluted_valuation: 75000000000, genesis_date: '2020-03-16', sparkline_in_7d: { price: Array(168).fill(145) }
+          },
+          {
+            id: 'ripple', symbol: 'xrp', name: 'XRP', current_price: 0.51, image: 'https://assets.coingecko.com/coins/images/44/large/xrp-symbol-white-128.png', price_change_percentage_24h: 0.5, market_cap: 28000000000, total_volume: 1000000000, high_24h: 0.52, low_24h: 0.50, ath: 3.40, ath_date: '2018-01-07', atl: 0.002, atl_date: '2014-05-22', circulating_supply: 55000000000, total_supply: 100000000000, max_supply: 100000000000, fully_diluted_valuation: 51000000000, genesis_date: '2013-08-04', sparkline_in_7d: { price: Array(168).fill(0.51) }
+          }
+        ];
+        set({ assets: fallbackData, loading: false, error: 'API Limit Reached. Running Offline Simulation.' });
+        get().setSelectedAsset('bitcoin');
+      } else {
+        set({ error: err.message, loading: false });
+      }
     }
   },
 
@@ -75,14 +105,14 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
     const cached = cache.get(cacheKey);
     
     if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {
-      set({ history: cached.data, isHistoryLoading: false, currentRange: days, error: null });
+      set({ history: cached.data, isHistoryLoading: false, currentRange: days, historyError: null });
       return;
     }
 
     if (abortController) abortController.abort();
     abortController = new AbortController();
     
-    set({ isHistoryLoading: true, currentRange: days, history: [], error: null });
+    set({ isHistoryLoading: true, currentRange: days, history: [], historyError: null });
     
     let daysParam = days;
     if (days === 'ytd') {
@@ -98,7 +128,7 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
       );
       
       if (!response.ok) {
-        if (response.status === 429) throw new Error('Terminal Busy: API Limit Reached.');
+        if (response.status === 429) throw new Error('Terminal Busy: History API Limit Reached.');
         throw new Error('Historical Feed Unavailable');
       }
 
@@ -110,7 +140,7 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
 
       let processedPrices = data.prices;
       
-      // Interpolation to simulate minute-by-minute points
+      // Interpolation logic for snappy charts
       const interpolate = (prices: [number, number][], targetIntervalMs: number) => {
         const result: [number, number][] = [];
         for (let i = 0; i < prices.length - 1; i++) {
@@ -121,7 +151,7 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
           const timeDiff = p2[0] - p1[0];
           const steps = Math.floor(timeDiff / targetIntervalMs);
           
-          if (steps > 1 && steps < 60) {
+          if (steps > 1 && steps < 100) {
             const timeStep = timeDiff / steps;
             const priceStep = (p2[1] - p1[1]) / steps;
             for (let j = 1; j < steps; j++) {
@@ -135,11 +165,15 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
       };
 
       if (days === '1') {
-        processedPrices = interpolate(data.prices, 60 * 1000); // 1 minute points
+        processedPrices = interpolate(data.prices, 60 * 1000); // 1 min
       } else if (days === '5') {
-        processedPrices = interpolate(data.prices, 10 * 60 * 1000); // 10 minute points
+        processedPrices = interpolate(data.prices, 10 * 60 * 1000); // 10 min
       } else if (days === '30') {
-        processedPrices = interpolate(data.prices, 60 * 60 * 1000); // 1 hour points
+        processedPrices = interpolate(data.prices, 60 * 60 * 1000); // 1 hour
+      } else if (days === '180' || days === 'ytd' || days === '365') {
+        processedPrices = interpolate(data.prices, 24 * 60 * 60 * 1000); // 1 day
+      } else if (days === '1825' || days === 'max') {
+        processedPrices = interpolate(data.prices, 7 * 24 * 60 * 60 * 1000); // 1 week
       }
 
       const formattedHistory = processedPrices.map((p: [number, number]) => ({
@@ -148,15 +182,34 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
       }));
       
       cache.set(cacheKey, { data: formattedHistory, timestamp: Date.now() });
-      set({ history: formattedHistory, isHistoryLoading: false, error: null });
+      set({ history: formattedHistory, isHistoryLoading: false, historyError: null });
     } catch (err: any) {
       if (err.name === 'AbortError') return;
-      set({ isHistoryLoading: false, error: err.message });
+      
+      const asset = get().assets.find(a => a.id === id);
+      const basePrice = asset ? (asset.current_price || 65000) : 65000;
+      
+      // Safe fallback data generator
+      const fakeHistory = [];
+      const now = Date.now();
+      const daysNum = days === 'max' ? 365 * 5 : (parseInt(daysParam) || 30);
+      const points = 150;
+      const step = (daysNum * 24 * 60 * 60 * 1000) / points;
+      
+      for(let i=0; i<points; i++) {
+         fakeHistory.push({
+           time: now - (points - i) * step,
+           value: basePrice * (1 + (Math.sin(i / 5) * 0.05))
+         });
+      }
+      
+      // Notice we DO NOT overwrite `error` (which breaks page), we use `historyError`
+      set({ history: fakeHistory, isHistoryLoading: false, historyError: err.message });
     }
   },
 
   setSelectedAsset: (id: string) => {
-    set({ selectedAssetId: id, error: null });
+    set({ selectedAssetId: id, historyError: null });
     get().fetchHistory(id, get().currentRange);
   },
 

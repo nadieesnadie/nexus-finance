@@ -8,7 +8,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { TrendingUp, Activity, ExternalLink, Info, ArrowUp, ArrowDown, Sparkles, LayoutDashboard, Wallet, Settings, Menu, RefreshCw } from 'lucide-react';
 import { exportToCSV } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, startOfDay, addHours, addDays, startOfMonth, addMonths, startOfYear, addYears } from 'date-fns';
 
 export default function Dashboard() {
   const { 
@@ -44,9 +44,43 @@ export default function Dashboard() {
     const values = history.map(h => h.value);
     const min = Math.min(...values);
     const max = Math.max(...values);
-    const padding = (max - min) * 0.15 || (min * 0.02);
+    const padding = (max - min) * 0.15 || (min * 0.05);
     return [min - padding, max + padding];
   }, [history]);
+
+  const xTicks = useMemo(() => {
+    if (!history || history.length === 0) return [];
+    const ticks = [];
+    const first = history[0].time;
+    const last = history[history.length - 1].time;
+
+    if (currentRange === '1') {
+      for (let t = startOfDay(first).getTime(); t <= last; t = addHours(t, 2).getTime()) {
+        if (t >= first) ticks.push(t);
+      }
+    } else if (currentRange === '5') {
+      for (let t = startOfDay(first).getTime(); t <= last; t = addHours(t, 12).getTime()) {
+        if (t >= first) ticks.push(t);
+      }
+    } else if (currentRange === '30') {
+      for (let t = startOfDay(first).getTime(); t <= last; t = addDays(t, 5).getTime()) {
+        if (t >= first) ticks.push(t);
+      }
+    } else if (currentRange === '180' || currentRange === 'ytd') {
+      for (let t = startOfMonth(first).getTime(); t <= last; t = addMonths(t, 1).getTime()) {
+        if (t >= first) ticks.push(t);
+      }
+    } else if (currentRange === '365') {
+      for (let t = startOfMonth(first).getTime(); t <= last; t = addMonths(t, 2).getTime()) {
+        if (t >= first) ticks.push(t);
+      }
+    } else if (currentRange === '1825' || currentRange === 'max') {
+      for (let t = startOfYear(first).getTime(); t <= last; t = addYears(t, 1).getTime()) {
+        if (t >= first) ticks.push(t);
+      }
+    }
+    return ticks.length > 0 ? ticks : undefined;
+  }, [history, currentRange]);
 
   const handleMouseMove = (e: any) => {
     if (e.activePayload && e.activePayload.length > 0) {
@@ -55,9 +89,30 @@ export default function Dashboard() {
     }
   };
 
-  if (!isMounted || (loading && (!assets || assets.length === 0))) return (
-    <div className="flex items-center justify-center h-screen bg-[#0d081a]">
-      <p className="text-white text-xl font-light tracking-[0.3em] animate-pulse uppercase">Connecting Nexus...</p>
+  if (!isMounted || loading) return (
+    <div className="flex items-center justify-center h-screen bg-[#130b29]">
+      <div className="flex flex-col items-center gap-6">
+        <div className="w-12 h-12 border-4 border-violet-500 border-t-white rounded-full animate-spin"></div>
+        <p className="text-violet-200 text-sm tracking-[0.5em] font-bold uppercase animate-pulse">Connecting Nexus...</p>
+      </div>
+    </div>
+  );
+
+  if (!assets || assets.length === 0) return (
+    <div className="flex items-center justify-center h-screen bg-[#130b29]">
+      <div className="flex flex-col items-center gap-6 p-8 bg-white/5 border border-white/10 rounded-3xl max-w-lg text-center backdrop-blur-xl">
+        <Info size={48} className="text-red-500" />
+        <h2 className="text-white text-2xl font-bold tracking-tight">Feed Disconnected</h2>
+        <p className="text-white/60 text-sm leading-relaxed">
+          {storeError || "The connection to the market data provider has been interrupted. This is usually due to API rate limits."}
+        </p>
+        <button 
+          onClick={() => { window.location.reload(); }} 
+          className="mt-4 px-8 py-3 bg-white text-black rounded-xl font-bold text-xs uppercase tracking-widest hover:scale-105 transition-transform"
+        >
+          Reboot Terminal
+        </button>
+      </div>
     </div>
   );
 
@@ -73,16 +128,16 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="flex h-screen bg-[#0d081a] text-white font-sans antialiased overflow-hidden selection:bg-violet-500/30">
+    <div className="flex h-screen bg-[#130b29] text-white font-sans antialiased overflow-hidden selection:bg-violet-500/30">
       
-      <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,#1e1435,transparent)] pointer-events-none" />
+      <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,#1e0c3a,transparent)] pointer-events-none" />
 
       {/* SIDEBAR */}
       <motion.aside 
         onHoverStart={() => setIsSidebarExpanded(true)}
         onHoverEnd={() => setIsSidebarExpanded(false)}
         animate={{ width: isSidebarExpanded ? 260 : 80 }}
-        className="h-full border-r border-white/5 bg-[#080514]/95 backdrop-blur-3xl flex flex-col py-8 px-4 z-50 relative hidden lg:flex"
+        className="h-full border-r border-white/5 bg-[#0e071f]/95 backdrop-blur-3xl flex flex-col py-8 px-4 z-50 relative hidden lg:flex"
       >
         <div className="flex items-center gap-4 mb-16 px-2">
           <div className="w-12 h-12 bg-violet-600 text-white flex items-center justify-center font-black text-2xl rounded-2xl">N</div>
@@ -111,8 +166,11 @@ export default function Dashboard() {
               </div>
               <div>
                 <div className="flex items-center gap-5">
-                  <h1 className="text-5xl font-normal text-white tracking-tight leading-none">{selectedAsset?.name || 'Syncing...'}</h1>
-                  <span className="text-2xl text-violet-400/40 font-bold uppercase tracking-widest">{selectedAsset?.symbol}</span>
+                  <h1 className="text-5xl font-normal text-white tracking-tight leading-none">{selectedAsset?.name || 'Syncing Stream'}</h1>
+                  <span className="text-2xl text-violet-400/40 font-bold uppercase tracking-widest">{selectedAsset?.symbol || '...'}</span>
+                  <a href={`https://finance.yahoo.com/quote/${selectedAsset?.symbol?.toUpperCase()}-USD`} target="_blank" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/20 hover:text-violet-400 hover:bg-white/10 transition-all">
+                    <ExternalLink size={20} />
+                  </a>
                 </div>
                 <div className="flex items-center gap-8 mt-4">
                   <span className="text-5xl font-normal text-white tabular-nums tracking-tighter">
@@ -148,7 +206,7 @@ export default function Dashboard() {
               {/* RECHARTS WITH HIGH DENSITY & CROSSHAIR */}
               <div className="bg-black/40 border border-white/10 rounded-[3.5rem] p-10 min-h-[600px] flex flex-col relative overflow-visible shadow-2xl backdrop-blur-md">
                 {isHistoryLoading && (
-                  <div className="absolute inset-0 bg-[#0d081a]/80 backdrop-blur-xl z-30 flex items-center justify-center flex-col gap-6 rounded-[3.5rem]">
+                  <div className="absolute inset-0 bg-[#130b29]/80 backdrop-blur-xl z-30 flex items-center justify-center flex-col gap-6 rounded-[3.5rem]">
                     <RefreshCw className="animate-spin text-violet-500" size={40} />
                     <p className="text-violet-200 text-xs font-black tracking-[0.4em] uppercase animate-pulse">Syncing Precision Feed</p>
                   </div>
@@ -176,7 +234,7 @@ export default function Dashboard() {
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart 
                       data={history} 
-                      margin={{ top: 20, right: 10, left: 10, bottom: 60 }} // Increased bottom margin to prevent cutoff
+                      margin={{ top: 20, right: 10, left: 10, bottom: 60 }} // Extra bottom margin
                       onMouseMove={handleMouseMove}
                       onMouseLeave={() => setHoverData(null)}
                     >
@@ -191,11 +249,16 @@ export default function Dashboard() {
                         dataKey="time" 
                         type="number"
                         domain={['dataMin', 'dataMax']}
-                        tickFormatter={(time) => format(new Date(time), currentRange === '1' ? 'HH:mm' : 'MMM dd')}
+                        ticks={xTicks}
+                        tickFormatter={(time) => {
+                          if (currentRange === '1' || currentRange === '5') return format(new Date(time), 'HH:mm');
+                          if (currentRange === '30' || currentRange === '180' || currentRange === 'ytd' || currentRange === '365') return format(new Date(time), 'MMM yyyy');
+                          return format(new Date(time), 'yyyy');
+                        }}
                         axisLine={false}
                         tickLine={false}
                         tick={{ fill: '#FFFFFF', fontSize: 11, opacity: 0.5, fontWeight: 700 }}
-                        dy={30} // Pushes labels down safely
+                        dy={30}
                       />
                       <YAxis 
                         domain={yDomain} 
@@ -203,15 +266,15 @@ export default function Dashboard() {
                         axisLine={false} 
                         tickLine={false}
                         tick={{ fill: '#FFFFFF', fontSize: 11, opacity: 0.5, fontWeight: 700 }}
-                        tickFormatter={(val) => val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        tickFormatter={(val) => val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                         width={90}
                       />
                       
-                      {/* Crosshair Tooltip Replacement */}
+                      {/* Crosshair System */}
                       <Tooltip 
                         isAnimationActive={false}
                         cursor={{ stroke: 'rgba(255,255,255,0.4)', strokeWidth: 1, strokeDasharray: '3 3' }}
-                        content={() => null} // Handled by AnimatePresence overlay
+                        content={() => null} // Handled by overlay
                       />
                       
                       {hoverData && (
@@ -225,13 +288,13 @@ export default function Dashboard() {
                         strokeWidth={3}
                         fillOpacity={1} 
                         fill="url(#colorPrice)" 
-                        animationDuration={0} // Disable animation for snappy feel
+                        animationDuration={0}
                         activeDot={{ r: 6, fill: '#FFF', stroke: chartColor, strokeWidth: 2 }}
                       />
                     </AreaChart>
                   </ResponsiveContainer>
 
-                  {/* YAHOO AXIS BADGES (Price & Time) */}
+                  {/* YAHOO AXIS BADGES */}
                   <AnimatePresence>
                     {hoverData && (
                       <>
@@ -239,7 +302,7 @@ export default function Dashboard() {
                           className="absolute right-0 bg-[#000000] text-white px-3 py-1.5 rounded-l font-bold text-[10px] z-40 tabular-nums pointer-events-none shadow-[0_0_10px_rgba(0,0,0,0.5)] border border-white/10"
                           style={{ top: mousePos.y - 12 }}
                         >
-                          ${hoverData.value.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                          ${(hoverData.value || 0).toLocaleString(undefined, { maximumFractionDigits: 4 })}
                         </div>
 
                         <div 
@@ -274,7 +337,7 @@ export default function Dashboard() {
                 <h3 className="text-white text-[11px] font-bold tracking-[0.3em] uppercase mb-8 flex items-center gap-2 opacity-40">
                   <Activity size={16} /> Market Intensity
                 </h3>
-                <div className="bg-black/30 border border-white/10 rounded-[2.5rem] overflow-hidden shadow-2xl backdrop-blur-xl">
+                <div className="bg-black/30 border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b border-white/10 bg-white/[0.03]">
@@ -285,10 +348,10 @@ export default function Dashboard() {
                     </thead>
                     <tbody>
                       {assets?.slice(0, 15).map((asset) => (
-                        <tr key={asset.id} onClick={() => setSelectedAsset(asset.id)} className={`border-b border-white/[0.03] last:border-0 hover:bg-violet-500/10 cursor-pointer transition-all ${selectedAssetId === asset.id ? 'bg-white/10' : ''}`}>
+                        <tr key={asset.id} onClick={() => setSelectedAsset(asset.id)} className={`border-b border-white/[0.03] last:border-0 hover:bg-violet-500/10 cursor-pointer transition-colors ${selectedAssetId === asset.id ? 'bg-white/10' : ''}`}>
                           <td className="p-6">
-                            <div className="font-bold text-sm text-white tracking-tighter">{asset.symbol?.toUpperCase()}</div>
-                            <div className="text-[11px] text-white/30 truncate max-w-[100px]">{asset.name}</div>
+                            <div className="font-bold text-sm text-white tracking-tighter">{asset.symbol?.toUpperCase() || ''}</div>
+                            <div className="text-[11px] text-white/30 truncate max-w-[100px]">{asset.name || ''}</div>
                           </td>
                           <td className="p-6 text-right font-normal text-sm tabular-nums">
                             ${(asset.current_price || 0) < 1 ? (asset.current_price || 0).toFixed(4) : (asset.current_price || 0).toLocaleString()}
@@ -312,7 +375,7 @@ export default function Dashboard() {
                     <div key={asset.id} onClick={() => setSelectedAsset(asset.id)} className={`p-6 cursor-pointer flex justify-between items-center border-b border-white/[0.03] last:border-0 transition-all ${selectedAssetId === asset.id ? 'bg-white text-black' : 'hover:bg-white/5'}`}>
                       <div className="flex items-center gap-5">
                         <img src={asset.image} alt="" className="w-8 h-8 object-contain" />
-                        <div className={`font-bold text-sm tracking-tight ${selectedAssetId === asset.id ? 'text-black' : 'text-white'}`}>{asset.name}</div>
+                        <div className={`font-bold text-base tracking-tighter ${selectedAssetId === asset.id ? 'text-black' : 'text-white'}`}>{asset.name || ''}</div>
                       </div>
                       <div className={`text-sm font-normal tabular-nums ${selectedAssetId === asset.id ? 'text-black' : 'text-white'}`}>
                         ${(asset.current_price || 0) < 1 ? (asset.current_price || 0).toFixed(4) : (asset.current_price || 0).toLocaleString()}
@@ -331,7 +394,7 @@ export default function Dashboard() {
 
 function SidebarItem({ icon, label, active = false, expanded = false }: { icon: React.ReactNode; label: string; active?: boolean; expanded?: boolean }) {
   return (
-    <div className={`flex items-center gap-5 p-4 rounded-2xl cursor-pointer transition-all ${active ? 'bg-violet-600 text-white shadow-2xl' : 'text-white/30 hover:text-white hover:bg-white/5'}`}>
+    <div className={`flex items-center gap-5 p-4 rounded-2xl cursor-pointer transition-all ${active ? 'bg-violet-600 text-white shadow-[0_0_30px_rgba(139,92,246,0.3)]' : 'text-white/30 hover:text-white hover:bg-white/5'}`}>
       <div className="shrink-0">{icon}</div>
       {expanded && <span className="text-base font-bold tracking-tight">{label}</span>}
     </div>
