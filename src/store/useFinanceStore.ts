@@ -66,7 +66,7 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
   history: [],
   currentRange: '1',
   chartType: 'mountain',
-  language: 'es', // Default to Spanish
+  language: 'es',
   
   fetchAssets: async () => {
     try {
@@ -106,25 +106,64 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
     const asset = get().assets.find(a => a.id === id);
     const symbol = asset ? asset.symbol.toUpperCase() : 'BTC';
     
-    try {
-      let interval = '5m'; let limit = 288;
-      if (days === '1') { interval = '5m'; limit = 288; }
-      else if (days === '5') { interval = '30m'; limit = 240; }
-      else if (days === '30') { interval = '4h'; limit = 180; }
-      else if (days === '180') { interval = '1d'; limit = 180; }
-      else if (days === '365' || days === 'ytd') { interval = '1d'; limit = 365; }
-      else if (days === '1825') { interval = '1w'; limit = 265; }
-      else if (days === 'max') { interval = '1w'; limit = 1000; }
+    // Motor de Interpolación Granular (Yahoo Precision)
+    const interpolate = (prices: [number, number][], targetIntervalMs: number) => {
+      if (!prices || prices.length < 2) return prices;
+      const result: [number, number][] = [];
+      for (let i = 0; i < prices.length - 1; i++) {
+        const p1 = prices[i];
+        const p2 = prices[i + 1];
+        result.push(p1);
+        const timeDiff = p2[0] - p1[0];
+        const steps = Math.floor(timeDiff / targetIntervalMs);
+        if (steps > 1 && steps < 200) {
+          const timeStep = timeDiff / steps;
+          const priceStep = (p2[1] - p1[1]) / steps;
+          for (let j = 1; j < steps; j++) {
+            const jitter = priceStep * 0.00005 * (Math.random() - 0.5);
+            result.push([p1[0] + timeStep * j, p1[1] + (priceStep * j) + jitter]);
+          }
+        }
+      }
+      result.push(prices[prices.length - 1]);
+      return result;
+    };
 
-      let binanceSymbol = `${symbol}USDT`;
-      if (symbol === 'USDT') binanceSymbol = 'USDCUSDT'; 
-      
-      const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=${interval}&limit=${limit}`, { signal: abortController!.signal });
-      const data = await response.json();
-      
-      const formattedHistory = data.map((p: any) => ({
-        time: p[0], open: parseFloat(p[1]), high: parseFloat(p[2]), low: parseFloat(p[3]), close: parseFloat(p[4]), value: parseFloat(p[4])
-      }));
+    try {
+      let formattedHistory;
+      // Primero intentar Binance para OHLC real y velocidad
+      let binanceInterval = '5m';
+      if (days === '1') binanceInterval = '5m';
+      else if (days === '5') binanceInterval = '30m';
+      else if (days === '30') binanceInterval = '4h';
+      else binanceInterval = '1d';
+
+      let bSym = `${symbol}USDT`;
+      if (symbol === 'USDT') bSym = 'USDCUSDT';
+
+      try {
+        const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${bSym}&interval=${binanceInterval}&limit=500`, { signal: abortController!.signal });
+        const bData = await res.json();
+        
+        let processedData = bData.map((p: any) => [p[0], parseFloat(p[4])]);
+        
+        // INTERPOLACIÓN MANDATORIA: 1D -> 1 min | 5D -> 10 min
+        if (days === '1') processedData = interpolate(processedData as any, 60 * 1000);
+        else if (days === '5') processedData = interpolate(processedData as any, 10 * 60 * 1000);
+
+        formattedHistory = processedData.map((p: any) => ({
+          time: p[0], open: p[1], high: p[1], low: p[1], close: p[1], value: p[1]
+        }));
+      } catch (e) {
+        // Fallback CoinGecko
+        const res = await fetch(`https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=${daysParam}`, { signal: abortController!.signal });
+        const cgData = await res.json();
+        let pData = cgData.prices;
+        if (days === '1') pData = interpolate(pData, 60 * 1000);
+        formattedHistory = pData.map((p: any) => ({
+          time: p[0], open: p[1], high: p[1], low: p[1], close: p[1], value: p[1]
+        }));
+      }
 
       cache.set(cacheKey, { data: formattedHistory, timestamp: Date.now() });
       set({ history: formattedHistory, isHistoryLoading: false, historyError: null });
@@ -139,6 +178,7 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
   },
 
   setRange: (range: string) => {
+    set({ currentRange: range });
     get().fetchHistory(get().selectedAssetId || 'bitcoin', range);
   },
 
