@@ -86,13 +86,24 @@ export default function Dashboard() {
     <div className="flex items-center justify-center h-screen bg-[#0a0518]">
       <div className="flex flex-col items-center gap-6">
         <div className="w-12 h-12 border-4 border-violet-500 border-t-white rounded-full animate-spin"></div>
-        <p className="text-white text-base font-bold uppercase animate-pulse tracking-[0.3em]">Connecting Nexus</p>
+        <p className="text-white text-base font-bold uppercase animate-pulse">Syncing Nexus Terminal...</p>
+      </div>
+    </div>
+  );
+
+  if (!assets || assets.length === 0) return (
+    <div className="flex items-center justify-center h-screen bg-[#0a0518]">
+      <div className="flex flex-col items-center gap-6 p-12 bg-white/5 border border-white/10 rounded-3xl max-w-lg text-center backdrop-blur-xl">
+        <DatabaseZap size={48} className="text-red-500" />
+        <h2 className="text-white text-2xl font-bold tracking-tight uppercase">{t.feed_error}</h2>
+        <p className="text-white/60 text-sm leading-relaxed">{t.feed_msg}</p>
+        <button onClick={() => { window.location.reload(); }} className="mt-4 px-8 py-3 bg-white text-black rounded-xl font-bold text-xs uppercase tracking-widest hover:scale-105 transition-transform">{t.reset_conn}</button>
       </div>
     </div>
   );
 
   const ranges = [ { label: '1D', value: '1' }, { label: '5D', value: '5' }, { label: '1M', value: '30' }, { label: '6M', value: '180' }, { label: 'YTD', value: 'ytd' }, { label: '1Y', value: '365' }, { label: '5Y', value: '1825' }, { label: 'ALL', value: 'max' } ];
-  const chartModes = [ { id: 'mountain', icon: <ChartArea size={16} /> }, { id: 'line', icon: <ChartLine size={16} /> }, { id: 'baseline', icon: <Activity size={16} /> }, { id: 'candle', icon: <ChartCandlestick size={16} /> }, { id: 'bar', icon: <ChartBar size={16} /> } ];
+  const chartModes = [ { id: 'mountain', icon: <ChartArea size={14} /> }, { id: 'line', icon: <ChartLine size={14} /> }, { id: 'baseline', icon: <Activity size={14} /> }, { id: 'candle', icon: <ChartCandlestick size={14} /> }, { id: 'bar', icon: <ChartBar size={14} /> } ];
 
   return (
     <div className="flex h-screen bg-[#0a0518] text-white font-sans antialiased overflow-hidden selection:bg-violet-500/30">
@@ -113,7 +124,7 @@ export default function Dashboard() {
               <div>
                 <div className="flex items-center gap-5">
                   <h1 className="text-5xl font-normal text-white tracking-tight leading-none">{selectedAsset?.name || t.syncing}</h1>
-                  <span className="text-2xl text-white/40 font-light uppercase tracking-widest">{selectedAsset?.symbol || '...'}</span>
+                  <span className="text-2xl text-white font-light uppercase tracking-widest opacity-40">{selectedAsset?.symbol}</span>
                   <a href={`https://finance.yahoo.com/quote/${selectedAsset?.symbol?.toUpperCase()}-USD`} target="_blank" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/20 hover:text-violet-400 hover:bg-white/10 transition-all"><ExternalLink size={20} /></a>
                 </div>
                 <div className="flex items-center gap-8 mt-4">
@@ -131,13 +142,13 @@ export default function Dashboard() {
             </div>
           </header>
 
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-16">
-            <div className="xl:col-span-10 flex flex-col gap-12"> 
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-12 text-white">
+            
+            {/* BALANCED CHART AREA (9 COLS) */}
+            <div className="xl:col-span-9 flex flex-col gap-12"> 
               <div className="bg-black/40 border border-white/10 rounded-[3.5rem] p-10 min-h-[600px] flex flex-col relative overflow-visible shadow-2xl backdrop-blur-md">
                 {isHistoryLoading && (<div className="absolute inset-0 bg-[#0a0518]/90 backdrop-blur-xl z-30 flex items-center justify-center flex-col gap-6 rounded-[3.5rem]"><RefreshCw className="animate-spin text-violet-500" size={40} /><p className="text-violet-200 text-[10px] font-black tracking-[0.5em] uppercase animate-pulse">{t.syncing}</p></div>)}
                 {!isHistoryLoading && historyError && (<div className="absolute inset-0 z-20 flex items-center justify-center flex-col gap-4"><DatabaseZap size={32} className="text-white/20" /><p className="text-white/40 font-bold uppercase tracking-[0.3em] text-sm">volume not available</p></div>)}
-                
-                {/* TOOLBAR WITH SEPARATION */}
                 <div className="flex flex-col sm:flex-row justify-between items-center mb-10 z-10 gap-6">
                   <div className="flex gap-16 items-center">
                     <div className="flex bg-white/5 rounded-lg overflow-hidden border border-white/10 shadow-inner">
@@ -149,13 +160,10 @@ export default function Dashboard() {
                   </div>
                   <div className="flex items-center gap-3 text-[10px] font-bold text-green-400 bg-green-500/10 px-4 py-2 rounded-full border border-green-500/20 shadow-2xl"><div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div><span>Feed Active v7.0</span></div>
                 </div>
-
                 <div className="flex-1 w-full min-h-[450px] cursor-crosshair relative">
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={history} margin={{ top: 20, right: 10, left: 10, bottom: 60 }} onMouseMove={handleMouseMove} onMouseLeave={() => setHoverData(null)}>
                       <defs>
-                        <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={chartColor} stopOpacity={chartType === 'line' ? 0 : 0.2}/><stop offset="95%" stopColor={chartColor} stopOpacity={0}/></linearGradient>
-                        <linearGradient id="colorBaseline" x1="0" y1="0" x2="0" y2="1"><stop offset={`${yDomainInfo.off}%`} stopColor="#22c55e" stopOpacity={0.4}/><stop offset={`${yDomainInfo.off}%`} stopColor="#ef4444" stopOpacity={0.4}/></linearGradient>
                         <linearGradient id="strokeBaseline" x1="0" y1="0" x2="0" y2="1"><stop offset={`${yDomainInfo.off}%`} stopColor="#22c55e" stopOpacity={1}/><stop offset={`${yDomainInfo.off}%`} stopColor="#ef4444" stopOpacity={1}/></linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="0" vertical={true} horizontal={true} stroke="rgba(255,255,255,0.03)" />
@@ -163,11 +171,9 @@ export default function Dashboard() {
                       <YAxis domain={[yDomainInfo.min, yDomainInfo.max]} orientation="right" axisLine={false} tickLine={false} tick={{ fill: '#FFFFFF', fontSize: 11, opacity: 0.3 }} tickFormatter={(val) => val.toLocaleString()} width={100} />
                       <Tooltip isAnimationActive={false} cursor={{ stroke: 'rgba(255,255,255,0.4)', strokeWidth: 1, strokeDasharray: '3 3' }} content={() => null} />
                       {(chartType === 'baseline' || hoverData) && ( <ReferenceLine y={hoverData ? hoverData.close : baselineValue} stroke="rgba(255,255,255,0.3)" strokeDasharray="3 3" /> )}
-                      
-                      {/* NO ANIMATION ON HOVER/EXIT */}
-                      {chartType === 'mountain' && <Area isAnimationActive={false} type="monotone" dataKey="close" stroke={chartColor} strokeWidth={3} fillOpacity={1} fill="url(#colorPrice)" activeDot={{ r: 6, fill: '#FFF', stroke: chartColor, strokeWidth: 2 }} />}
+                      {chartType === 'mountain' && <Area isAnimationActive={false} type="monotone" dataKey="close" stroke={chartColor} strokeWidth={3} fillOpacity={0.2} fill={chartColor} activeDot={{ r: 6, fill: '#FFF', stroke: chartColor, strokeWidth: 2 }} />}
                       {chartType === 'line' && <Line isAnimationActive={false} type="monotone" dataKey="close" stroke={chartColor} strokeWidth={3} dot={false} activeDot={{ r: 6, fill: '#FFF' }} />}
-                      {chartType === 'baseline' && <Area isAnimationActive={false} type="monotone" dataKey="close" stroke="url(#strokeBaseline)" strokeWidth={3} fill="url(#colorBaseline)" baseValue={baselineValue} />}
+                      {chartType === 'baseline' && <Area isAnimationActive={false} type="monotone" dataKey="close" stroke="url(#strokeBaseline)" strokeWidth={3} fill="transparent" baseValue={baselineValue} />}
                       {chartType === 'candle' && <Bar isAnimationActive={false} dataKey="close" barSize={6}>{history.map((e, i) => <Cell key={i} fill={e.close >= e.open ? '#22c55e' : '#ef4444'} />)}</Bar>}
                       {chartType === 'bar' && <Bar isAnimationActive={false} dataKey="close" barSize={3}>{history.map((e, i) => <Cell key={i} fill={chartColor} />)}</Bar>}
                     </ComposedChart>
@@ -199,16 +205,17 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="xl:col-span-2 flex flex-col gap-12">
+            {/* SAFE SIDEBAR AREA (3 COLS) */}
+            <div className="xl:col-span-3 flex flex-col gap-12">
               <div>
-                <h3 className="text-white text-[11px] font-bold uppercase mb-8 flex items-center gap-2 opacity-40"><Activity size={16} /> {t.market_intensity}</h3>
+                <h3 className="text-violet-300 text-xs font-bold uppercase mb-8 flex items-center gap-2"><Activity size={16} /> {t.market_intensity}</h3>
                 <div className="bg-black/30 border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
                   <table className="w-full text-left border-collapse">
                     <thead><tr className="border-b border-white/10 bg-white/[0.03]"><th className="p-4 text-[9px] font-bold text-white uppercase">Ticker</th><th className="p-4 text-[9px] font-bold text-white uppercase text-right">Delta</th></tr></thead>
                     <tbody>
                       {assets?.slice(0, 15).map((asset) => (
                         <tr key={asset.id} onClick={() => setSelectedAsset(asset.id)} className={`border-b border-white/[0.03] last:border-0 hover:bg-violet-500/10 cursor-pointer transition-all ${selectedAssetId === asset.id ? 'bg-white/10' : ''}`}>
-                          <td className="p-4"><div className="font-bold text-sm text-white uppercase">{asset.symbol?.toUpperCase() || ''}</div><div className="text-[11px] text-white font-normal">${(asset.current_price || 0).toLocaleString()}</div></td>
+                          <td className="p-4"><div className="font-bold text-sm text-white uppercase">{asset.symbol?.toUpperCase() || ''}</div><div className="text-[10px] text-white font-normal">${(asset.current_price || 0).toLocaleString()}</div></td>
                           <td className="p-4 text-right"><div className={`inline-block font-bold text-[9px] px-2 py-1 rounded ${(asset.price_change_percentage_24h || 0) >= 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>{(asset.price_change_percentage_24h || 0) >= 0 ? '+' : ''}{(asset.price_change_percentage_24h || 0).toFixed(2)}%</div></td>
                         </tr>
                       ))}
