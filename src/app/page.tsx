@@ -3,13 +3,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useFinanceStore } from '@/store/useFinanceStore';
 import { 
-  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, LineChart, Line 
+  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid 
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TrendingUp, Activity, ExternalLink, Info, ArrowUp, ArrowDown, Sparkles, LayoutDashboard, Wallet, Settings, Menu, RefreshCw } from 'lucide-react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { exportToCSV } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, startOfDay, addHours, addDays, isSameDay } from 'date-fns';
 
 export default function Dashboard() {
   const { 
@@ -41,9 +41,35 @@ export default function Dashboard() {
     const values = history.map(h => h.value);
     const min = Math.min(...values);
     const max = Math.max(...values);
-    const padding = (max - min) * 0.15 || min * 0.02;
+    const padding = (max - min) * 0.15 || min * 0.05;
     return [min - padding, max + padding];
   }, [history]);
+
+  // Generador de Ticks Inteligentes (Estilo Yahoo)
+  const xTicks = useMemo(() => {
+    if (history.length === 0) return [];
+    const ticks = [];
+    const first = history[0].time;
+    const last = history[history.length - 1].time;
+
+    if (currentRange === '1') {
+      // Cada 2 horas
+      for (let t = startOfDay(first).getTime(); t <= last; t = addHours(t, 2).getTime()) {
+        if (t >= first) ticks.push(t);
+      }
+    } else if (currentRange === '5') {
+      // Cada 12 horas
+      for (let t = startOfDay(first).getTime(); t <= last; t = addHours(t, 12).getTime()) {
+        if (t >= first) ticks.push(t);
+      }
+    } else if (currentRange === '30') {
+      // Cada 5 días
+      for (let t = startOfDay(first).getTime(); t <= last; t = addDays(t, 5).getTime()) {
+        if (t >= first) ticks.push(t);
+      }
+    }
+    return ticks.length > 0 ? ticks : undefined;
+  }, [history, currentRange]);
 
   if (loading && assets.length === 0) return (
     <div className="flex items-center justify-center h-screen bg-[#0d081a]">
@@ -68,7 +94,6 @@ export default function Dashboard() {
   return (
     <div className="flex h-screen bg-[#0d081a] text-white font-sans antialiased overflow-hidden selection:bg-violet-500/30">
       
-      {/* Dynamic Background Glow */}
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,#1e1435,transparent)] pointer-events-none" />
 
       {/* SIDEBAR */}
@@ -80,11 +105,7 @@ export default function Dashboard() {
       >
         <div className="flex items-center gap-4 mb-16 px-2">
           <div className="w-12 h-12 bg-violet-600 text-white flex items-center justify-center font-black text-2xl rounded-2xl shadow-[0_0_30px_rgba(139,92,246,0.4)]">N</div>
-          <AnimatePresence>
-            {isSidebarExpanded && (
-              <motion.span initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="text-white font-black text-2xl tracking-tighter">NEXUS</motion.span>
-            )}
-          </AnimatePresence>
+          {isSidebarExpanded && <span className="text-white font-black text-2xl tracking-tighter">NEXUS</span>}
         </div>
 
         <nav className="flex flex-col gap-6 w-full px-2">
@@ -101,14 +122,14 @@ export default function Dashboard() {
           
           <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-10 mb-16">
             <div className="flex items-center gap-10">
-              <div className="w-24 h-24 bg-white/5 border border-white/10 rounded-[2rem] p-5 flex items-center justify-center shadow-2xl backdrop-blur-xl group hover:border-violet-500/50 transition-all">
+              <div className="w-24 h-24 bg-white/5 border border-white/10 rounded-[2rem] p-5 flex items-center justify-center shadow-2xl backdrop-blur-xl">
                 {selectedAsset?.image && <img src={selectedAsset.image} alt="" className="w-full h-full object-contain" />}
               </div>
               <div>
                 <div className="flex items-center gap-5">
                   <h1 className="text-6xl font-normal text-white tracking-tighter leading-none">{selectedAsset?.name || 'Syncing...'}</h1>
                   <span className="text-2xl text-violet-400/50 font-bold uppercase tracking-widest">{selectedAsset?.symbol}</span>
-                  <a href={`https://finance.yahoo.com/quote/${selectedAsset?.symbol?.toUpperCase()}-USD`} target="_blank" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/20 hover:text-violet-400 hover:bg-white/10 transition-all">
+                  <a href={`https://finance.yahoo.com/quote/${selectedAsset?.symbol?.toUpperCase()}-USD`} target="_blank" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/20 hover:text-violet-400">
                     <ExternalLink size={20} />
                   </a>
                 </div>
@@ -130,7 +151,7 @@ export default function Dashboard() {
           </header>
 
           {storeError && (
-            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="bg-red-500/10 border border-red-500/20 text-red-200 p-6 rounded-3xl mb-12 flex justify-between items-center backdrop-blur-xl">
+            <div className="bg-red-500/10 border border-red-500/20 text-red-200 p-6 rounded-3xl mb-12 flex justify-between items-center backdrop-blur-xl">
               <div className="flex items-center gap-4 text-lg font-medium">
                 <Info size={24} />
                 <span>{storeError}</span>
@@ -138,14 +159,13 @@ export default function Dashboard() {
               <button onClick={() => fetchAssets()} className="bg-white text-black px-8 py-3 rounded-2xl font-black text-sm uppercase tracking-widest hover:scale-105 transition-all flex items-center gap-2">
                 <RefreshCw size={18} /> Re-establish Feed
               </button>
-            </motion.div>
+            </div>
           )}
 
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-16">
             
             <div className="xl:col-span-8 flex flex-col gap-16">
               
-              {/* Main Terminal Chart */}
               <div className="bg-[#0c0a1f]/40 border border-white/5 rounded-[3.5rem] p-12 min-h-[650px] flex flex-col relative overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.4)] backdrop-blur-md">
                 {isHistoryLoading && (
                   <div className="absolute inset-0 bg-[#0d081a]/90 backdrop-blur-xl z-30 flex items-center justify-center flex-col gap-6">
@@ -155,20 +175,20 @@ export default function Dashboard() {
                 )}
                 
                 <div className="flex flex-col sm:flex-row justify-between items-center mb-16 z-10 gap-8">
-                  <div className="flex bg-black/40 backdrop-blur-2xl p-1 rounded-2xl border border-white/10 shadow-2xl">
+                  <div className="flex bg-black/40 backdrop-blur-2xl p-1 rounded-2xl border border-white/10">
                     {ranges.map((r) => (
                       <button
                         key={r.label}
                         onClick={() => setRange(r.value)}
-                        className={`px-7 py-3 text-[11px] font-black tracking-widest transition-all rounded-xl uppercase ${currentRange === r.value ? 'bg-white text-black shadow-[0_0_40px_rgba(255,255,255,0.2)]' : 'text-white/40 hover:text-white'}`}
+                        className={`px-7 py-3 text-[11px] font-black tracking-widest transition-all rounded-xl uppercase ${currentRange === r.value ? 'bg-white text-black' : 'text-white/40 hover:text-white'}`}
                       >
                         {r.label}
                       </button>
                     ))}
                   </div>
                   <div className="flex items-center gap-4 text-[11px] font-black text-violet-400 bg-violet-500/5 px-6 py-3 rounded-full border border-violet-500/20 uppercase tracking-[0.3em]">
-                    <div className="w-2 h-2 rounded-full bg-violet-500 shadow-[0_0_15px_#8b5cf6] animate-pulse" />
-                    Terminal: Online
+                    <div className="w-2 h-2 rounded-full bg-violet-500 shadow-[0_0_15px_#8b5cf6]" />
+                    Feed: Minute Accuracy
                   </div>
                 </div>
 
@@ -184,11 +204,13 @@ export default function Dashboard() {
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.01)" />
                       <XAxis 
                         dataKey="time" 
+                        type="number"
+                        domain={['dataMin', 'dataMax']}
+                        ticks={xTicks}
                         tickFormatter={(time) => format(new Date(time), currentRange === '1' ? 'HH:mm' : 'MMM dd')}
                         axisLine={false}
                         tickLine={false}
                         tick={{ fill: '#FFFFFF', fontSize: 11, opacity: 0.3, fontWeight: 700 }}
-                        minTickGap={70}
                         dy={20}
                       />
                       <YAxis 
@@ -204,16 +226,17 @@ export default function Dashboard() {
                         width={100}
                       />
                       <Tooltip 
-                        cursor={{ stroke: 'rgba(139, 92, 246, 0.4)', strokeWidth: 1 }}
+                        isAnimationActive={false}
+                        cursor={{ stroke: 'rgba(255,255,255,0.2)', strokeWidth: 1 }}
                         content={({ active, payload }) => {
                           if (active && payload && payload.length) {
                             return (
-                              <div className="bg-[#0d081a] border border-white/20 p-6 rounded-[2rem] shadow-[0_40px_80px_rgba(0,0,0,0.8)] backdrop-blur-3xl">
+                              <div className="bg-[#0d081a] border border-white/20 p-6 rounded-[2rem] shadow-2xl backdrop-blur-3xl">
                                 <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em] mb-4 border-b border-white/5 pb-3">
                                   {format(new Date(payload[0].payload.time), 'MMM dd, yyyy • HH:mm:ss')}
                                 </p>
-                                <div className="flex flex-col gap-2">
-                                  <span className="text-violet-400 text-[9px] uppercase font-black tracking-[0.3em]">Snapshot Value</span>
+                                <div className="flex flex-col gap-1">
+                                  <span className="text-violet-400 text-[9px] uppercase font-black tracking-[0.3em]">Spot Price</span>
                                   <p className="text-white text-4xl font-normal tabular-nums leading-none tracking-tighter">
                                     ${payload[0].value?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
                                   </p>
@@ -228,17 +251,17 @@ export default function Dashboard() {
                         type="monotone" 
                         dataKey="value" 
                         stroke={chartColor} 
-                        strokeWidth={3}
+                        strokeWidth={2}
                         fillOpacity={1} 
                         fill="url(#colorPrice)" 
-                        animationDuration={1000}
+                        animationDuration={0}
+                        activeDot={{ r: 4, fill: '#FFFFFF', stroke: chartColor, strokeWidth: 2 }}
                       />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
               </div>
 
-              {/* Technical Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-24 gap-y-2">
                 <StatRow label="Market Capitalization" value={`$${(selectedAsset?.market_cap / 1e9).toFixed(3)}B`} />
                 <StatRow label="Available Liquidity (24h)" value={`$${(selectedAsset?.total_volume / 1e9).toFixed(3)}B`} />
@@ -250,20 +273,19 @@ export default function Dashboard() {
                 <StatRow label="Fully Diluted Valuation" value={`$${(selectedAsset?.fully_diluted_valuation / 1e9 || 0).toFixed(3)}B`} />
               </div>
 
-              {/* AI Section */}
               <div className="border border-white/10 p-12 rounded-[3.5rem] bg-gradient-to-br from-violet-600/10 to-transparent">
                 <div className="flex items-center gap-4 mb-8 text-violet-400 font-black tracking-[0.4em] text-xs uppercase">
                   <Sparkles size={20} />
                   <span>Nexus Intelligence Report</span>
                 </div>
                 <p className="text-white text-3xl font-light leading-tight tracking-tight">
-                  {selectedAsset?.name} is currently processing at ${selectedAsset?.current_price?.toLocaleString(undefined, {maximumFractionDigits: 4})}. 
-                  Market sentiment is {selectedAsset?.price_change_percentage_24h >= 0 ? 'expanding' : 'contracting'} with a 24h efficiency of {Math.abs(selectedAsset?.price_change_percentage_24h || 0).toFixed(2)}%. 
+                  {selectedAsset?.name} analysis: Trading at ${selectedAsset?.current_price?.toLocaleString(undefined, {maximumFractionDigits: 4})}. 
+                  Market activity is {selectedAsset?.price_change_percentage_24h >= 0 ? 'bullish' : 'bearish'} within the {currentRange}D observation window.
                 </p>
               </div>
             </div>
 
-            {/* RIGHT SIDE: Yahoo Trending Widget */}
+            {/* RIGHT SIDE */}
             <div className="xl:col-span-4 flex flex-col gap-16">
               
               <div>
@@ -274,9 +296,9 @@ export default function Dashboard() {
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b border-white/10 bg-white/[0.03]">
-                        <th className="p-6 text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Asset</th>
-                        <th className="p-6 text-[10px] font-black text-white/40 uppercase tracking-[0.2em] text-right">Price</th>
-                        <th className="p-6 text-[10px] font-black text-white/40 uppercase tracking-[0.2em] text-right">Shift</th>
+                        <th className="p-6 text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Ticker</th>
+                        <th className="p-6 text-[10px] font-black text-white/40 uppercase tracking-[0.2em] text-right">Last Price</th>
+                        <th className="p-6 text-[10px] font-black text-white/40 uppercase tracking-[0.2em] text-right">Delta</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -289,8 +311,8 @@ export default function Dashboard() {
                           <td className="p-6 text-right">
                             <div className="text-base font-normal text-white tabular-nums">${asset.current_price < 1 ? asset.current_price.toFixed(4) : asset.current_price.toLocaleString()}</div>
                           </td>
-                          <td className="p-6 text-right">
-                            <div className={`font-black tabular-nums text-xs ${asset.price_change_percentage_24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          <td className="p-4 text-right">
+                            <div className={`inline-block font-black tabular-nums text-xs px-2 py-1 rounded ${asset.price_change_percentage_24h >= 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
                               {asset.price_change_percentage_24h >= 0 ? '+' : ''}{asset.price_change_percentage_24h?.toFixed(2)}%
                             </div>
                           </td>
@@ -301,17 +323,14 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Ranking */}
               <div className="flex flex-col gap-6">
-                <h3 className="text-white text-[11px] font-black tracking-[0.4em] uppercase mb-4 px-4 opacity-40 text-center">Top 50 Ranking</h3>
+                <h3 className="text-white text-[11px] font-black tracking-[0.4em] uppercase mb-4 px-4 opacity-40 text-center">Market Liquidity (Top 50)</h3>
                 <div className="flex flex-col max-h-[600px] overflow-y-auto custom-scrollbar border border-white/5 rounded-[2.5rem] bg-black/20">
                   {assets.map((asset) => (
                     <div key={asset.id} onClick={() => setSelectedAsset(asset.id)} className={`p-6 cursor-pointer flex justify-between items-center border-b border-white/[0.03] last:border-0 transition-all ${selectedAssetId === asset.id ? 'bg-white text-black' : 'hover:bg-white/5'}`}>
                       <div className="flex items-center gap-5">
                         <img src={asset.image} alt="" className="w-8 h-8 object-contain" />
-                        <div>
-                          <div className={`font-black text-base tracking-tighter ${selectedAssetId === asset.id ? 'text-black' : 'text-white'}`}>{asset.name}</div>
-                        </div>
+                        <div className={`font-black text-base tracking-tighter ${selectedAssetId === asset.id ? 'text-black' : 'text-white'}`}>{asset.name}</div>
                       </div>
                       <div className={`text-sm font-normal tabular-nums ${selectedAssetId === asset.id ? 'text-black' : 'text-white'}`}>
                         ${asset.current_price < 1 ? asset.current_price.toFixed(4) : asset.current_price.toLocaleString()}
