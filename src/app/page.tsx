@@ -6,8 +6,7 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine 
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TrendingUp, Activity, ExternalLink, Info, ArrowUp, ArrowDown, Sparkles, LayoutDashboard, Wallet, Settings, Menu, RefreshCw } from 'lucide-react';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { TrendingUp, Activity, ExternalLink, Info, ArrowUp, ArrowDown, Sparkles, LayoutDashboard, Wallet, Settings, Menu, RefreshCw, ShieldCheck } from 'lucide-react';
 import { exportToCSV } from '@/lib/utils';
 import { format, startOfDay, addHours, addDays, startOfMonth, addMonths, startOfYear, addYears } from 'date-fns';
 
@@ -105,12 +104,9 @@ export default function Dashboard() {
         <Info size={48} className="text-red-500" />
         <h2 className="text-white text-2xl font-bold tracking-tight">Feed Disconnected</h2>
         <p className="text-white/60 text-sm leading-relaxed">
-          {storeError || "The connection to the market data provider has been interrupted. This is usually due to API rate limits."}
+          The connection to the market data provider has been interrupted. 
         </p>
-        <button 
-          onClick={() => { window.location.reload(); }} 
-          className="mt-4 px-8 py-3 bg-white text-black rounded-xl font-bold text-xs uppercase tracking-widest hover:scale-105 transition-transform"
-        >
+        <button onClick={() => { window.location.reload(); }} className="mt-4 px-8 py-3 bg-white text-black rounded-xl font-bold text-xs uppercase tracking-widest hover:scale-105 transition-transform">
           Reboot Terminal
         </button>
       </div>
@@ -189,18 +185,6 @@ export default function Dashboard() {
             </div>
           </header>
 
-          {storeError && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-200 p-6 rounded-3xl mb-12 flex justify-between items-center backdrop-blur-xl">
-              <div className="flex items-center gap-4 text-lg font-medium">
-                <Info size={24} />
-                <span>{storeError}</span>
-              </div>
-              <button onClick={() => fetchAssets()} className="bg-white text-black px-8 py-3 rounded-2xl font-black text-sm uppercase tracking-widest hover:scale-105 transition-all flex items-center gap-2">
-                <RefreshCw size={18} /> Re-establish Feed
-              </button>
-            </div>
-          )}
-
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-16">
             <div className="xl:col-span-8 flex flex-col gap-12">
               
@@ -226,8 +210,17 @@ export default function Dashboard() {
                     ))}
                   </div>
                   <div className="flex items-center gap-3 text-[10px] font-bold text-violet-400 uppercase tracking-[0.2em]">
-                    <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-                    {historyError ? <span className="text-yellow-500">Mode: Proxy Sim</span> : <span>Mode: Live Feed</span>}
+                    {historyError ? (
+                       <div className="flex items-center gap-2 text-yellow-500 bg-yellow-500/10 px-3 py-1 rounded-full border border-yellow-500/20">
+                         <Info size={12} />
+                         <span>Mode: Backup Proxy</span>
+                       </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-green-400 bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20">
+                        <ShieldCheck size={12} />
+                        <span>Mode: Institutional Feed</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -271,43 +264,19 @@ export default function Dashboard() {
                         width={90}
                       />
                       
-                      <Tooltip 
-                        isAnimationActive={false}
-                        cursor={{ stroke: 'rgba(255,255,255,0.4)', strokeWidth: 1, strokeDasharray: '3 3' }}
-                        content={() => null} 
-                      />
-                      
-                      {hoverData && (
-                        <ReferenceLine y={hoverData.value} stroke="rgba(255,255,255,0.2)" strokeDasharray="3 3" />
-                      )}
-
-                      <Area 
-                        type="monotone" 
-                        dataKey="value" 
-                        stroke={chartColor} 
-                        strokeWidth={3}
-                        fillOpacity={1} 
-                        fill="url(#colorPrice)" 
-                        animationDuration={0}
-                        activeDot={{ r: 6, fill: '#FFF', stroke: chartColor, strokeWidth: 2 }}
-                      />
+                      <Tooltip isAnimationActive={false} cursor={{ stroke: 'rgba(255,255,255,0.4)', strokeWidth: 1, strokeDasharray: '3 3' }} content={() => null} />
+                      {hoverData && <ReferenceLine y={hoverData.value} stroke="rgba(255,255,255,0.2)" strokeDasharray="3 3" />}
+                      <Area type="monotone" dataKey="value" stroke={chartColor} strokeWidth={3} fillOpacity={1} fill="url(#colorPrice)" animationDuration={0} activeDot={{ r: 6, fill: '#FFF', stroke: chartColor, strokeWidth: 2 }} />
                     </AreaChart>
                   </ResponsiveContainer>
 
                   <AnimatePresence>
                     {hoverData && (
                       <>
-                        <div 
-                          className="absolute right-0 bg-[#000000] text-white px-3 py-1.5 rounded-l font-bold text-[10px] z-40 tabular-nums pointer-events-none shadow-[0_0_10px_rgba(0,0,0,0.5)] border border-white/10"
-                          style={{ top: mousePos.y - 12 }}
-                        >
+                        <div className="absolute right-0 bg-[#000000] text-white px-3 py-1.5 rounded-l font-bold text-[10px] z-40 tabular-nums pointer-events-none shadow-[0_0_10px_rgba(0,0,0,0.5)] border border-white/10" style={{ top: mousePos.y - 12 }}>
                           ${(hoverData.value || 0).toLocaleString(undefined, { maximumFractionDigits: 4 })}
                         </div>
-
-                        <div 
-                          className="absolute bottom-[20px] bg-[#000000] text-white px-4 py-2 rounded font-bold text-[10px] z-40 whitespace-nowrap pointer-events-none shadow-[0_0_10px_rgba(0,0,0,0.5)] border border-white/10"
-                          style={{ left: mousePos.x - 60 }}
-                        >
+                        <div className="absolute bottom-[20px] bg-[#000000] text-white px-4 py-2 rounded font-bold text-[10px] z-40 whitespace-nowrap pointer-events-none shadow-[0_0_10px_rgba(0,0,0,0.5)] border border-white/10" style={{ left: mousePos.x - 60 }}>
                           {format(new Date(hoverData.time), 'MMM dd, yyyy • HH:mm')}
                         </div>
                       </>
@@ -352,13 +321,9 @@ export default function Dashboard() {
                             <div className="font-bold text-sm text-white tracking-tighter">{asset.symbol?.toUpperCase() || ''}</div>
                             <div className="text-[10px] text-white/30 truncate max-w-[100px]">{asset.name || ''}</div>
                           </td>
-                          <td className="p-6 text-right font-normal text-sm tabular-nums">
-                            ${(asset.current_price || 0) < 1 ? (asset.current_price || 0).toFixed(4) : (asset.current_price || 0).toLocaleString()}
-                          </td>
+                          <td className="p-6 text-right font-normal text-sm tabular-nums">${(asset.current_price || 0) < 1 ? (asset.current_price || 0).toFixed(4) : (asset.current_price || 0).toLocaleString()}</td>
                           <td className="p-6 text-right">
-                            <div className={`inline-block font-bold text-[10px] px-2 py-1 rounded ${(asset.price_change_percentage_24h || 0) >= 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
-                              {(asset.price_change_percentage_24h || 0) >= 0 ? '+' : ''}{(asset.price_change_percentage_24h || 0).toFixed(2)}%
-                            </div>
+                            <div className={`inline-block font-bold text-[10px] px-2 py-1 rounded ${(asset.price_change_percentage_24h || 0) >= 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>{(asset.price_change_percentage_24h || 0) >= 0 ? '+' : ''}{(asset.price_change_percentage_24h || 0).toFixed(2)}%</div>
                           </td>
                         </tr>
                       ))}
@@ -366,7 +331,6 @@ export default function Dashboard() {
                   </table>
                 </div>
               </div>
-
               <div className="flex flex-col gap-6">
                 <h3 className="text-white text-[11px] font-bold tracking-[0.3em] uppercase mb-4 px-4 opacity-40 text-center">Market Liquidity (Top 50)</h3>
                 <div className="flex flex-col max-h-[600px] overflow-y-auto custom-scrollbar border border-white/5 rounded-[2.5rem] bg-black/20">
@@ -376,9 +340,7 @@ export default function Dashboard() {
                         <img src={asset.image} alt="" className="w-8 h-8 object-contain" />
                         <div className={`font-bold text-base tracking-tighter ${selectedAssetId === asset.id ? 'text-black' : 'text-white'}`}>{asset.name || ''}</div>
                       </div>
-                      <div className={`text-sm font-normal tabular-nums ${selectedAssetId === asset.id ? 'text-black' : 'text-white'}`}>
-                        ${(asset.current_price || 0) < 1 ? (asset.current_price || 0).toFixed(4) : (asset.current_price || 0).toLocaleString()}
-                      </div>
+                      <div className={`text-sm font-normal tabular-nums ${selectedAssetId === asset.id ? 'text-black' : 'text-white'}`}>${(asset.current_price || 0) < 1 ? (asset.current_price || 0).toFixed(4) : (asset.current_price || 0).toLocaleString()}</div>
                     </div>
                   ))}
                 </div>
