@@ -3,17 +3,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useFinanceStore } from '@/store/useFinanceStore';
 import { 
-  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine 
+  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, BarChart, Bar, LineChart, Line, Cell
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TrendingUp, Activity, ExternalLink, Info, ArrowUp, ArrowDown, Sparkles, LayoutDashboard, Wallet, Settings, Menu, RefreshCw, ShieldCheck, DatabaseZap } from 'lucide-react';
+import { TrendingUp, Activity, ExternalLink, Info, ArrowUp, ArrowDown, Sparkles, LayoutDashboard, Wallet, Settings, Menu, RefreshCw, ShieldCheck, DatabaseZap, ChartArea, ChartLine, ChartCandlestick, ChartBar } from 'lucide-react';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { exportToCSV } from '@/lib/utils';
 import { format, startOfDay, addHours, addDays, startOfMonth, addMonths, startOfYear, addYears } from 'date-fns';
 
 export default function Dashboard() {
   const { 
     assets, fetchAssets, loading, selectedAssetId, setSelectedAsset, 
-    history, setRange, currentRange, isHistoryLoading, error: storeError, historyError
+    history, setRange, currentRange, isHistoryLoading, error: storeError, historyError,
+    chartType, setChartType
   } = useFinanceStore();
 
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
@@ -34,16 +36,17 @@ export default function Dashboard() {
 
   const chartColor = useMemo(() => {
     if (!history || history.length < 2) return '#a78bfa';
-    const first = history[0].value;
-    const last = history[history.length - 1].value;
+    const first = history[0].close;
+    const last = history[history.length - 1].close;
     return last >= first ? '#22c55e' : '#ef4444';
   }, [history]);
 
   const yDomain = useMemo(() => {
     if (!history || history.length === 0) return ['auto', 'auto'];
-    const values = history.map(h => h.value);
-    const min = Math.min(...values);
-    const max = Math.max(...values);
+    const highs = history.map(h => h.high);
+    const lows = history.map(h => h.low);
+    const min = Math.min(...lows);
+    const max = Math.max(...highs);
     const padding = (max - min) * 0.15 || (min * 0.05);
     return [min - padding, max + padding];
   }, [history]);
@@ -66,18 +69,6 @@ export default function Dashboard() {
       for (let t = startOfDay(first).getTime(); t <= last; t = addDays(t, 5).getTime()) {
         if (t >= first) ticks.push(t);
       }
-    } else if (currentRange === '180' || currentRange === 'ytd') {
-      for (let t = startOfMonth(first).getTime(); t <= last; t = addMonths(t, 1).getTime()) {
-        if (t >= first) ticks.push(t);
-      }
-    } else if (currentRange === '365') {
-      for (let t = startOfMonth(first).getTime(); t <= last; t = addMonths(t, 2).getTime()) {
-        if (t >= first) ticks.push(t);
-      }
-    } else if (currentRange === '1825' || currentRange === 'max') {
-      for (let t = startOfYear(first).getTime(); t <= last; t = addYears(t, 1).getTime()) {
-        if (t >= first) ticks.push(t);
-      }
     }
     return ticks.length > 0 ? ticks : undefined;
   }, [history, currentRange]);
@@ -98,21 +89,6 @@ export default function Dashboard() {
     </div>
   );
 
-  if (!assets || assets.length === 0) return (
-    <div className="flex items-center justify-center h-screen bg-[#130b29]">
-      <div className="flex flex-col items-center gap-6 p-8 bg-white/5 border border-white/10 rounded-3xl max-w-lg text-center backdrop-blur-xl">
-        <DatabaseZap size={48} className="text-red-500" />
-        <h2 className="text-white text-2xl font-bold tracking-tight">Institutional Feed Error</h2>
-        <p className="text-white/60 text-sm leading-relaxed">
-          The primary market data stream is temporarily unavailable. 
-        </p>
-        <button onClick={() => { window.location.reload(); }} className="mt-4 px-8 py-3 bg-white text-black rounded-xl font-bold text-xs uppercase tracking-widest hover:scale-105 transition-transform">
-          Reset Connection
-        </button>
-      </div>
-    </div>
-  );
-
   const ranges = [
     { label: '1D', value: '1' },
     { label: '5D', value: '5' },
@@ -122,6 +98,13 @@ export default function Dashboard() {
     { label: '1Y', value: '365' },
     { label: '5Y', value: '1825' },
     { label: 'ALL', value: 'max' },
+  ];
+
+  const chartModes = [
+    { id: 'mountain', label: 'Mountain', icon: <ChartArea size={14} /> },
+    { id: 'line', label: 'Line', icon: <ChartLine size={14} /> },
+    { id: 'candle', label: 'Candle', icon: <ChartCandlestick size={14} /> },
+    { id: 'bar', label: 'Bar', icon: <ChartBar size={14} /> },
   ];
 
   return (
@@ -180,24 +163,33 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              <button onClick={() => exportToCSV(assets, 'nexus-audit')} className="text-white/60 hover:text-white hover:underline text-xs font-medium uppercase tracking-[0.2em] transition-all">Audit CSV</button>
-            </div>
+            <ConnectButton />
           </header>
+
+          {storeError && (
+            <div className="bg-red-500/10 border border-red-500/20 text-red-200 p-6 rounded-3xl mb-12 flex justify-between items-center backdrop-blur-xl">
+              <div className="flex items-center gap-4 text-lg font-medium">
+                <Info size={24} />
+                <span>{storeError}</span>
+              </div>
+              <button onClick={() => fetchAssets()} className="bg-white text-black px-8 py-3 rounded-2xl font-black text-sm uppercase tracking-widest hover:scale-105 transition-all flex items-center gap-2">
+                <RefreshCw size={18} /> Re-establish Feed
+              </button>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-16">
             <div className="xl:col-span-8 flex flex-col gap-12">
               
-              {/* CHART AREA */}
+              {/* TERMINAL DASHBOARD */}
               <div className="bg-black/40 border border-white/10 rounded-[3.5rem] p-10 min-h-[600px] flex flex-col relative overflow-visible shadow-2xl backdrop-blur-md">
                 {isHistoryLoading && (
                   <div className="absolute inset-0 bg-[#130b29]/80 backdrop-blur-xl z-30 flex items-center justify-center flex-col gap-6 rounded-[3.5rem]">
                     <RefreshCw className="animate-spin text-violet-500" size={40} />
-                    <p className="text-violet-200 text-xs font-black tracking-[0.4em] uppercase animate-pulse">Scanning Feed</p>
+                    <p className="text-violet-200 text-xs font-black tracking-[0.4em] uppercase animate-pulse">Syncing Precision Feed</p>
                   </div>
                 )}
 
-                {/* ERROR STATE: VOLUME NOT AVAILABLE */}
                 {!isHistoryLoading && historyError && (
                   <div className="absolute inset-0 z-20 flex items-center justify-center flex-col gap-4">
                     <DatabaseZap size={32} className="text-white/20" />
@@ -205,77 +197,69 @@ export default function Dashboard() {
                   </div>
                 )}
                 
-                <div className="flex flex-col sm:flex-row justify-between items-center mb-10 z-10 px-2">
-                  <div className="flex bg-white/5 rounded-lg overflow-hidden border border-white/10">
-                    {ranges.map((r) => (
-                      <button
-                        key={r.label}
-                        onClick={() => setRange(r.value)}
-                        className={`px-5 py-2 text-[10px] font-bold tracking-widest transition-all border-r border-white/10 last:border-0 uppercase ${currentRange === r.value ? 'bg-white text-black' : 'text-white/40 hover:text-white'}`}
-                      >
-                        {r.label}
-                      </button>
-                    ))}
+                {/* TOOLBAR: RANGES + MODES */}
+                <div className="flex flex-col xl:flex-row justify-between items-center mb-10 z-10 px-2 gap-6">
+                  <div className="flex gap-4">
+                    <div className="flex bg-white/5 rounded-lg overflow-hidden border border-white/10">
+                      {ranges.map((r) => (
+                        <button key={r.label} onClick={() => setRange(r.value)} className={`px-5 py-2 text-[10px] font-bold tracking-widest transition-all border-r border-white/10 last:border-0 uppercase ${currentRange === r.value ? 'bg-white text-black' : 'text-white/40 hover:text-white'}`}>
+                          {r.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="flex bg-white/5 rounded-lg overflow-hidden border border-white/10">
+                      {chartModes.map((m) => (
+                        <button key={m.id} onClick={() => setChartType(m.id as any)} className={`px-4 py-2 text-[10px] font-bold transition-all border-r border-white/10 last:border-0 flex items-center gap-2 ${chartType === m.id ? 'bg-violet-600 text-white' : 'text-white/40 hover:text-white'}`}>
+                          {m.icon}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   <div className="flex items-center gap-3 text-[10px] font-bold text-violet-400 uppercase tracking-[0.2em]">
                     <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-                    <span>Mode: Institutional Feed</span>
+                    <span>Institutional Feed v5</span>
                   </div>
                 </div>
 
                 <div className="flex-1 w-full min-h-[450px] cursor-crosshair relative">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart 
-                      data={history} 
-                      margin={{ top: 20, right: 10, left: 10, bottom: 60 }} 
-                      onMouseMove={handleMouseMove}
-                      onMouseLeave={() => setHoverData(null)}
-                    >
-                      <defs>
-                        <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor={chartColor} stopOpacity={0.2}/>
-                          <stop offset="95%" stopColor={chartColor} stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.02)" />
-                      <XAxis 
-                        dataKey="time" 
-                        type="number"
-                        domain={['dataMin', 'dataMax']}
-                        ticks={xTicks}
-                        tickFormatter={(time) => {
-                          if (currentRange === '1' || currentRange === '5') return format(new Date(time), 'HH:mm');
-                          if (currentRange === '30' || currentRange === '180' || currentRange === 'ytd' || currentRange === '365') return format(new Date(time), 'MMM yyyy');
-                          return format(new Date(time), 'yyyy');
-                        }}
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: '#FFFFFF', fontSize: 11, opacity: 0.5, fontWeight: 700 }}
-                        dy={30}
-                      />
-                      <YAxis 
-                        domain={yDomain} 
-                        orientation="right" 
-                        axisLine={false} 
-                        tickLine={false}
-                        tick={{ fill: '#FFFFFF', fontSize: 11, opacity: 0.5, fontWeight: 700 }}
-                        tickFormatter={(val) => val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
-                        width={90}
-                      />
-                      
-                      <Tooltip isAnimationActive={false} cursor={{ stroke: 'rgba(255,255,255,0.4)', strokeWidth: 1, strokeDasharray: '3 3' }} content={() => null} />
-                      {hoverData && <ReferenceLine y={hoverData.value} stroke="rgba(255,255,255,0.2)" strokeDasharray="3 3" />}
-                      <Area type="monotone" dataKey="value" stroke={chartColor} strokeWidth={3} fillOpacity={1} fill="url(#colorPrice)" animationDuration={0} activeDot={{ r: 6, fill: '#FFF', stroke: chartColor, strokeWidth: 2 }} />
-                    </AreaChart>
+                    {chartType === 'candle' || chartType === 'bar' ? (
+                      <BarChart data={history} margin={{ top: 20, right: 10, left: 10, bottom: 60 }} onMouseMove={handleMouseMove} onMouseLeave={() => setHoverData(null)}>
+                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.02)" />
+                         <XAxis dataKey="time" type="number" domain={['dataMin', 'dataMax']} ticks={xTicks} tickFormatter={(t) => format(new Date(t), 'HH:mm')} axisLine={false} tickLine={false} tick={{ fill: '#FFFFFF', fontSize: 11, opacity: 0.5 }} dy={30} />
+                         <YAxis domain={yDomain} orientation="right" axisLine={false} tickLine={false} tick={{ fill: '#FFFFFF', fontSize: 11, opacity: 0.5 }} tickFormatter={(val) => val.toLocaleString()} width={90} />
+                         <Tooltip isAnimationActive={false} cursor={{fill: 'transparent'}} content={() => null} />
+                         <Bar dataKey="close" barSize={currentRange === '1' ? 2 : 5}>
+                            {history.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.close >= entry.open ? '#22c55e' : '#ef4444'} />
+                            ))}
+                         </Bar>
+                      </BarChart>
+                    ) : (
+                      <AreaChart data={history} margin={{ top: 20, right: 10, left: 10, bottom: 60 }} onMouseMove={handleMouseMove} onMouseLeave={() => setHoverData(null)}>
+                        <defs>
+                          <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={chartColor} stopOpacity={chartType === 'line' ? 0 : 0.2}/>
+                            <stop offset="95%" stopColor={chartColor} stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.02)" />
+                        <XAxis dataKey="time" type="number" domain={['dataMin', 'dataMax']} ticks={xTicks} tickFormatter={(t) => format(new Date(t), 'HH:mm')} axisLine={false} tickLine={false} tick={{ fill: '#FFFFFF', fontSize: 11, opacity: 0.5 }} dy={30} />
+                        <YAxis domain={yDomain} orientation="right" axisLine={false} tickLine={false} tick={{ fill: '#FFFFFF', fontSize: 11, opacity: 0.5 }} tickFormatter={(val) => val.toLocaleString()} width={90} />
+                        <Tooltip isAnimationActive={false} cursor={{ stroke: 'rgba(255,255,255,0.4)', strokeWidth: 1, strokeDasharray: '3 3' }} content={() => null} />
+                        {hoverData && <ReferenceLine y={hoverData.close} stroke="rgba(255,255,255,0.2)" strokeDasharray="3 3" />}
+                        <Area type="monotone" dataKey="close" stroke={chartColor} strokeWidth={2} fillOpacity={1} fill="url(#colorPrice)" animationDuration={0} activeDot={{ r: 6, fill: '#FFF', stroke: chartColor, strokeWidth: 2 }} />
+                      </AreaChart>
+                    )}
                   </ResponsiveContainer>
 
                   <AnimatePresence>
                     {hoverData && (
                       <>
-                        <div className="absolute right-0 bg-[#000000] text-white px-3 py-1.5 rounded-l font-bold text-[10px] z-40 tabular-nums pointer-events-none shadow-[0_0_10px_rgba(0,0,0,0.5)] border border-white/10" style={{ top: mousePos.y - 12 }}>
-                          ${(hoverData.value || 0).toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                        <div className="absolute right-0 bg-[#000000] text-white px-3 py-1.5 rounded-l font-bold text-[10px] z-40 tabular-nums border border-white/10" style={{ top: mousePos.y - 12 }}>
+                          ${(hoverData.close || 0).toLocaleString(undefined, { maximumFractionDigits: 4 })}
                         </div>
-                        <div className="absolute bottom-[20px] bg-[#000000] text-white px-4 py-2 rounded font-bold text-[10px] z-40 whitespace-nowrap pointer-events-none shadow-[0_0_10px_rgba(0,0,0,0.5)] border border-white/10" style={{ left: mousePos.x - 60 }}>
+                        <div className="absolute bottom-[20px] bg-[#000000] text-white px-4 py-2 rounded font-bold text-[10px] z-40 whitespace-nowrap border border-white/10" style={{ left: mousePos.x - 60 }}>
                           {format(new Date(hoverData.time), 'MMM dd, yyyy • HH:mm')}
                         </div>
                       </>
@@ -320,13 +304,9 @@ export default function Dashboard() {
                             <div className="font-bold text-sm text-white tracking-tighter">{asset.symbol?.toUpperCase() || ''}</div>
                             <div className="text-[10px] text-white/30 truncate max-w-[100px]">{asset.name || ''}</div>
                           </td>
-                          <td className="p-6 text-right font-normal text-sm tabular-nums">
-                            ${(asset.current_price || 0) < 1 ? (asset.current_price || 0).toFixed(4) : (asset.current_price || 0).toLocaleString()}
-                          </td>
+                          <td className="p-6 text-right font-normal text-sm tabular-nums">${(asset.current_price || 0) < 1 ? (asset.current_price || 0).toFixed(4) : (asset.current_price || 0).toLocaleString()}</td>
                           <td className="p-6 text-right">
-                            <div className={`inline-block font-bold text-[10px] px-2 py-1 rounded ${(asset.price_change_percentage_24h || 0) >= 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
-                              {(asset.price_change_percentage_24h || 0) >= 0 ? '+' : ''}{(asset.price_change_percentage_24h || 0).toFixed(2)}%
-                            </div>
+                            <div className={`inline-block font-bold text-[10px] px-2 py-1 rounded ${(asset.price_change_percentage_24h || 0) >= 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>{(asset.price_change_percentage_24h || 0) >= 0 ? '+' : ''}{(asset.price_change_percentage_24h || 0).toFixed(2)}%</div>
                           </td>
                         </tr>
                       ))}
@@ -334,7 +314,6 @@ export default function Dashboard() {
                   </table>
                 </div>
               </div>
-
               <div className="flex flex-col gap-6">
                 <h3 className="text-white text-[11px] font-bold tracking-[0.3em] uppercase mb-4 px-4 opacity-40 text-center">Market Liquidity (Top 50)</h3>
                 <div className="flex flex-col max-h-[600px] overflow-y-auto custom-scrollbar border border-white/5 rounded-[2.5rem] bg-black/20">
@@ -344,9 +323,7 @@ export default function Dashboard() {
                         <img src={asset.image} alt="" className="w-8 h-8 object-contain" />
                         <div className={`font-bold text-base tracking-tighter ${selectedAssetId === asset.id ? 'text-black' : 'text-white'}`}>{asset.name || ''}</div>
                       </div>
-                      <div className={`text-sm font-normal tabular-nums ${selectedAssetId === asset.id ? 'text-black' : 'text-white'}`}>
-                        ${(asset.current_price || 0) < 1 ? (asset.current_price || 0).toFixed(4) : (asset.current_price || 0).toLocaleString()}
-                      </div>
+                      <div className={`text-sm font-normal tabular-nums ${selectedAssetId === asset.id ? 'text-black' : 'text-white'}`}>${(asset.current_price || 0) < 1 ? (asset.current_price || 0).toFixed(4) : (asset.current_price || 0).toLocaleString()}</div>
                     </div>
                   ))}
                 </div>
