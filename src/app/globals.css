@@ -2,14 +2,13 @@
 
 @theme {
   --font-sans: "SF Pro Display", "Inter", system-ui, sans-serif;
-  --color-apple-blue: #007AFF;
-  --color-apple-gray: #8E8E93;
-  --color-glass-bg: rgba(255, 255, 255, 0.05);
-  --color-glass-border: rgba(255, 255, 255, 0.1);
+  --color-nexus-accent: #8b5cf6;
+  --color-nexus-bg: #0d081a;
+  --color-nexus-card: #130b2b;
 }
 
 :root {
-  --background: #000000;
+  --background: #0d081a;
   --foreground: #ffffff;
 }
 
@@ -20,22 +19,19 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-@layer base {
-  * {
-    @apply border-glass-border;
-  }
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
 }
 
-.glass {
-  @apply bg-glass-bg backdrop-blur-xl border border-glass-border;
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.chart-gradient-top {
-  stop-color: var(--color-apple-blue);
-  stop-opacity: 0.3;
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.3);
+  border-radius: 10px;
 }
 
-.chart-gradient-bottom {
-  stop-color: var(--color-apple-blue);
-  stop-opacity: 0;
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.5);
 }

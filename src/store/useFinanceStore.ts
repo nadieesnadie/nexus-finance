@@ -39,6 +39,8 @@ interface FinanceStore {
 }
 
 let abortController: AbortController | null = null;
+const cache = new Map<string, { data: any, timestamp: number }>();
+const CACHE_DURATION = 300000; // 5 minutos
 
 export const useFinanceStore = create<FinanceStore>((set, get) => ({
   assets: [],
@@ -54,7 +56,7 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
       const response = await fetch(
         'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=50&page=1&sparkline=true&price_change_percentage=24h,7d'
       );
-      if (!response.ok) throw new Error('Terminal Error: API limit reached. Retrying...');
+      if (!response.ok) throw new Error('API Rate Limit. Retrying in 60s...');
       const data = await response.json();
       
       const isInitialLoad = get().assets.length === 0;
@@ -69,10 +71,18 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
   },
 
   fetchHistory: async (id: string, days: string) => {
+    const cacheKey = `${id}-${days}`;
+    const cached = cache.get(cacheKey);
+    
+    if (cached && (Date.now() - cached.timestamp < CACHE_DURATION)) {
+      set({ history: cached.data, isHistoryLoading: false, currentRange: days, error: null });
+      return;
+    }
+
     if (abortController) abortController.abort();
     abortController = new AbortController();
     
-    set({ isHistoryLoading: true, currentRange: days, history: [] });
+    set({ isHistoryLoading: true, currentRange: days, history: [], error: null });
     
     let daysParam = days;
     if (days === 'ytd') {
@@ -82,18 +92,14 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
     }
     
     try {
-      // Usar un pequeño delay si es XRP o inferior para evitar el rate limit masivo inicial
       const response = await fetch(
         `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=${daysParam}`,
         { signal: abortController.signal }
       );
       
       if (!response.ok) {
-        if (response.status === 429) {
-          set({ error: 'API Rate Limit: Waiting for slot...' });
-          return;
-        }
-        throw new Error('Data stream unavailable for this asset');
+        if (response.status === 429) throw new Error('Terminal Busy: API Limit Reached.');
+        throw new Error('Historical Feed Unavailable');
       }
 
       const data = await response.json();
@@ -102,10 +108,11 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
         value: p[1]
       }));
       
+      cache.set(cacheKey, { data: formattedHistory, timestamp: Date.now() });
       set({ history: formattedHistory, isHistoryLoading: false, error: null });
     } catch (err: any) {
       if (err.name === 'AbortError') return;
-      set({ isHistoryLoading: false, error: 'Historical feed offline' });
+      set({ isHistoryLoading: false, error: err.message });
     }
   },
 
