@@ -73,7 +73,7 @@ export default function Dashboard() {
       handleScale: true,
     });
 
-    const areaSeries = (chart as any).addAreaSeries({
+    const areaSeries = chart.addSeries(AreaSeries, {
       lineColor: chartColor,
       topColor: `${chartColor}30`,
       bottomColor: `${chartColor}00`,

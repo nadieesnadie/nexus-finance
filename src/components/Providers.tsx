@@ -21,7 +21,7 @@ import {
 
 const config = getDefaultConfig({
   appName: 'Nexus Finance',
-  projectId: 'YOUR_PROJECT_ID_HERE', // Reemplazar con ID real de WalletConnect
+  projectId: '00000000000000000000000000000000', // Mock valid format to prevent crashes
   chains: [mainnet, polygon, optimism, arbitrum, base],
   ssr: true,
 });
