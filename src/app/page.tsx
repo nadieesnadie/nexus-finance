@@ -86,24 +86,13 @@ export default function Dashboard() {
     <div className="flex items-center justify-center h-screen bg-[#0a0518]">
       <div className="flex flex-col items-center gap-6">
         <div className="w-12 h-12 border-4 border-violet-500 border-t-white rounded-full animate-spin"></div>
-        <p className="text-white text-base font-bold uppercase animate-pulse">Syncing Nexus Terminal...</p>
-      </div>
-    </div>
-  );
-
-  if (!assets || assets.length === 0) return (
-    <div className="flex items-center justify-center h-screen bg-[#0a0518]">
-      <div className="flex flex-col items-center gap-6 p-12 bg-white/5 border border-white/10 rounded-3xl max-w-lg text-center backdrop-blur-xl">
-        <DatabaseZap size={48} className="text-red-500" />
-        <h2 className="text-white text-2xl font-bold tracking-tight uppercase">{t.feed_error}</h2>
-        <p className="text-white/60 text-sm leading-relaxed">{t.feed_msg}</p>
-        <button onClick={() => { window.location.reload(); }} className="mt-4 px-8 py-3 bg-white text-black rounded-xl font-bold text-xs uppercase tracking-widest hover:scale-105 transition-transform">{t.reset_conn}</button>
+        <p className="text-white text-base font-bold uppercase animate-pulse tracking-[0.3em]">Connecting Nexus</p>
       </div>
     </div>
   );
 
   const ranges = [ { label: '1D', value: '1' }, { label: '5D', value: '5' }, { label: '1M', value: '30' }, { label: '6M', value: '180' }, { label: 'YTD', value: 'ytd' }, { label: '1Y', value: '365' }, { label: '5Y', value: '1825' }, { label: 'ALL', value: 'max' } ];
-  const chartModes = [ { id: 'mountain', icon: <ChartArea size={14} /> }, { id: 'line', icon: <ChartLine size={14} /> }, { id: 'baseline', icon: <Activity size={14} /> }, { id: 'candle', icon: <ChartCandlestick size={14} /> }, { id: 'bar', icon: <ChartBar size={14} /> } ];
+  const chartModes = [ { id: 'mountain', icon: <ChartArea size={16} /> }, { id: 'line', icon: <ChartLine size={16} /> }, { id: 'baseline', icon: <Activity size={16} /> }, { id: 'candle', icon: <ChartCandlestick size={16} /> }, { id: 'bar', icon: <ChartBar size={16} /> } ];
 
   return (
     <div className="flex h-screen bg-[#0a0518] text-white font-sans antialiased overflow-hidden selection:bg-violet-500/30">
@@ -124,7 +113,7 @@ export default function Dashboard() {
               <div>
                 <div className="flex items-center gap-5">
                   <h1 className="text-5xl font-normal text-white tracking-tight leading-none">{selectedAsset?.name || t.syncing}</h1>
-                  <span className="text-2xl text-violet-400/40 font-bold uppercase tracking-widest">{selectedAsset?.symbol || '...'}</span>
+                  <span className="text-2xl text-white/40 font-light uppercase tracking-widest">{selectedAsset?.symbol || '...'}</span>
                   <a href={`https://finance.yahoo.com/quote/${selectedAsset?.symbol?.toUpperCase()}-USD`} target="_blank" className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white/20 hover:text-violet-400 hover:bg-white/10 transition-all"><ExternalLink size={20} /></a>
                 </div>
                 <div className="flex items-center gap-8 mt-4">
@@ -135,7 +124,7 @@ export default function Dashboard() {
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 bg-white/5 p-1 rounded-xl border border-white/10 shadow-xl">
-                <button onClick={() => exportToCSV(assets, 'nexus-audit')} className="px-4 py-2 text-white/60 hover:text-white text-[10px] font-bold uppercase transition-all hover:bg-white/5 rounded-lg">{t.audit}</button>
+                <button onClick={() => exportToCSV(assets, 'nexus-audit')} className="px-4 py-2 text-white hover:text-violet-300 text-[10px] font-bold uppercase transition-all hover:bg-white/5 rounded-lg">{t.audit}</button>
                 <div className="w-px h-4 bg-white/10" />
                 <button onClick={() => setLanguage(language === 'en' ? 'es' : 'en')} className="flex items-center gap-2 px-5 py-2 bg-violet-600 text-white text-[10px] font-bold uppercase transition-all hover:bg-violet-500 rounded-lg shadow-[0_0_15px_rgba(139,92,246,0.3)]"><Globe size={14} />{language.toUpperCase()}</button>
               </div>
@@ -145,15 +134,22 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 xl:grid-cols-12 gap-16">
             <div className="xl:col-span-10 flex flex-col gap-12"> 
               <div className="bg-black/40 border border-white/10 rounded-[3.5rem] p-10 min-h-[600px] flex flex-col relative overflow-visible shadow-2xl backdrop-blur-md">
-                {isHistoryLoading && (<div className="absolute inset-0 bg-[#130b29]/80 backdrop-blur-xl z-30 flex items-center justify-center flex-col gap-6 rounded-[3.5rem]"><RefreshCw className="animate-spin text-violet-500" size={40} /><p className="text-violet-200 text-xs font-black tracking-[0.4em] uppercase animate-pulse">Syncing Precision Feed</p></div>)}
+                {isHistoryLoading && (<div className="absolute inset-0 bg-[#0a0518]/90 backdrop-blur-xl z-30 flex items-center justify-center flex-col gap-6 rounded-[3.5rem]"><RefreshCw className="animate-spin text-violet-500" size={40} /><p className="text-violet-200 text-[10px] font-black tracking-[0.5em] uppercase animate-pulse">{t.syncing}</p></div>)}
                 {!isHistoryLoading && historyError && (<div className="absolute inset-0 z-20 flex items-center justify-center flex-col gap-4"><DatabaseZap size={32} className="text-white/20" /><p className="text-white/40 font-bold uppercase tracking-[0.3em] text-sm">volume not available</p></div>)}
+                
+                {/* TOOLBAR WITH SEPARATION */}
                 <div className="flex flex-col sm:flex-row justify-between items-center mb-10 z-10 gap-6">
-                  <div className="flex gap-12 items-center">
-                    <div className="flex bg-white/5 rounded-lg overflow-hidden border border-white/10">{ranges.map((r) => (<button key={r.label} onClick={() => setRange(r.value)} className={`px-5 py-2 text-[10px] font-bold tracking-tighter transition-all border-r border-white/10 last:border-0 uppercase ${currentRange === r.value ? 'bg-white text-black' : 'text-white/40 hover:text-white'}`}>{r.label}</button>))}</div>
-                    <div className="flex bg-white/5 rounded-lg overflow-hidden border border-white/10 shadow-inner">{chartModes.map((m) => (<button key={m.id} onClick={() => setChartType(m.id as any)} className={`px-4 py-2 text-[9px] font-bold transition-all border-r border-white/10 last:border-0 ${chartType === m.id ? 'bg-violet-600 text-white' : 'text-white/40 hover:text-white'}`}>{m.icon}</button>))}</div>
+                  <div className="flex gap-16 items-center">
+                    <div className="flex bg-white/5 rounded-lg overflow-hidden border border-white/10 shadow-inner">
+                      {ranges.map((r) => (<button key={r.label} onClick={() => setRange(r.value)} className={`px-5 py-2 text-[10px] font-bold tracking-tighter transition-all border-r border-white/10 last:border-0 uppercase ${currentRange === r.value ? 'bg-white text-black shadow-lg' : 'text-white/40 hover:text-white'}`}>{r.label}</button>))}
+                    </div>
+                    <div className="flex bg-white/5 rounded-lg overflow-hidden border border-white/10 shadow-inner">
+                      {chartModes.map((m) => (<button key={m.id} onClick={() => setChartType(m.id as any)} className={`px-4 py-2 text-[9px] font-bold transition-all border-r border-white/10 last:border-0 ${chartType === m.id ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/30' : 'text-white/40 hover:text-white'}`}>{m.icon}</button>))}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3 text-[10px] font-bold text-violet-400 uppercase tracking-[0.2em]"><div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div><span>Institutional Feed v6</span></div>
+                  <div className="flex items-center gap-3 text-[10px] font-bold text-green-400 bg-green-500/10 px-4 py-2 rounded-full border border-green-500/20 shadow-2xl"><div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div><span>Feed Active v7.0</span></div>
                 </div>
+
                 <div className="flex-1 w-full min-h-[450px] cursor-crosshair relative">
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={history} margin={{ top: 20, right: 10, left: 10, bottom: 60 }} onMouseMove={handleMouseMove} onMouseLeave={() => setHoverData(null)}>
@@ -167,18 +163,20 @@ export default function Dashboard() {
                       <YAxis domain={[yDomainInfo.min, yDomainInfo.max]} orientation="right" axisLine={false} tickLine={false} tick={{ fill: '#FFFFFF', fontSize: 11, opacity: 0.3 }} tickFormatter={(val) => val.toLocaleString()} width={100} />
                       <Tooltip isAnimationActive={false} cursor={{ stroke: 'rgba(255,255,255,0.4)', strokeWidth: 1, strokeDasharray: '3 3' }} content={() => null} />
                       {(chartType === 'baseline' || hoverData) && ( <ReferenceLine y={hoverData ? hoverData.close : baselineValue} stroke="rgba(255,255,255,0.3)" strokeDasharray="3 3" /> )}
-                      {chartType === 'mountain' && <Area type="monotone" dataKey="close" stroke={chartColor} strokeWidth={3} fillOpacity={1} fill="url(#colorPrice)" animationDuration={0} activeDot={{ r: 6, fill: '#FFF', stroke: chartColor, strokeWidth: 2 }} />}
-                      {chartType === 'line' && <Line type="monotone" dataKey="close" stroke={chartColor} strokeWidth={3} dot={false} animationDuration={0} activeDot={{ r: 6, fill: '#FFF' }} />}
-                      {chartType === 'baseline' && <Area type="monotone" dataKey="close" stroke="url(#strokeBaseline)" strokeWidth={3} fill="url(#colorBaseline)" animationDuration={0} baseValue={baselineValue} />}
-                      {chartType === 'candle' && <Bar dataKey="close" barSize={6}>{history.map((e, i) => <Cell key={i} fill={e.close >= e.open ? '#22c55e' : '#ef4444'} />)}</Bar>}
-                      {chartType === 'bar' && <Bar dataKey="close" barSize={3}>{history.map((e, i) => <Cell key={i} fill={chartColor} />)}</Bar>}
+                      
+                      {/* NO ANIMATION ON HOVER/EXIT */}
+                      {chartType === 'mountain' && <Area isAnimationActive={false} type="monotone" dataKey="close" stroke={chartColor} strokeWidth={3} fillOpacity={1} fill="url(#colorPrice)" activeDot={{ r: 6, fill: '#FFF', stroke: chartColor, strokeWidth: 2 }} />}
+                      {chartType === 'line' && <Line isAnimationActive={false} type="monotone" dataKey="close" stroke={chartColor} strokeWidth={3} dot={false} activeDot={{ r: 6, fill: '#FFF' }} />}
+                      {chartType === 'baseline' && <Area isAnimationActive={false} type="monotone" dataKey="close" stroke="url(#strokeBaseline)" strokeWidth={3} fill="url(#colorBaseline)" baseValue={baselineValue} />}
+                      {chartType === 'candle' && <Bar isAnimationActive={false} dataKey="close" barSize={6}>{history.map((e, i) => <Cell key={i} fill={e.close >= e.open ? '#22c55e' : '#ef4444'} />)}</Bar>}
+                      {chartType === 'bar' && <Bar isAnimationActive={false} dataKey="close" barSize={3}>{history.map((e, i) => <Cell key={i} fill={chartColor} />)}</Bar>}
                     </ComposedChart>
                   </ResponsiveContainer>
                   <AnimatePresence>
                     {hoverData && (
                       <>
                         <div className="absolute left-1/2 -translate-x-1/2 bottom-[10px] bg-white text-black px-6 py-2 rounded-full font-black text-xs z-40 whitespace-nowrap shadow-[0_0_30px_rgba(255,255,255,0.4)] border border-white/10" style={{ left: mousePos.x }}>{format(new Date(hoverData.time), 'MMM dd, yyyy • HH:mm:ss')}</div>
-                        <div className="absolute right-0 bg-[#000000] text-white px-3 py-1.5 rounded-l font-bold text-[10px] z-40 tabular-nums border border-white/10" style={{ top: mousePos.y - 12 }}>${(hoverData.close || 0).toLocaleString(undefined, { maximumFractionDigits: 4 })}</div>
+                        <div className="absolute right-0 bg-white text-black px-2 py-1 rounded-l font-black text-[10px] z-40 tabular-nums shadow-2xl border border-white/10" style={{ top: mousePos.y - 12 }}>${(hoverData.close || 0).toLocaleString(undefined, { maximumFractionDigits: 4 })}</div>
                       </>
                     )}
                   </AnimatePresence>
@@ -197,36 +195,25 @@ export default function Dashboard() {
               </div>
               <div className="bg-white/[0.03] border border-white/10 rounded-[2.5rem] p-10 mt-6 relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-12 text-violet-500/5 group-hover:text-violet-500/10 transition-colors"><Sparkles size={200} /></div>
-                <div className="relative z-10"><div className="flex items-center gap-3 mb-6 text-white/60 font-medium tracking-[0.2em] text-[10px] uppercase"><Sparkles size={16} className="text-white" /><span>Terminal AI Logic</span></div><h3 className="text-2xl font-bold mb-4 text-white uppercase tracking-tight">{t.about} {selectedAsset?.name}</h3><p className="text-white/90 text-xl font-light leading-relaxed">{selectedAsset?.name} ({selectedAsset?.symbol?.toUpperCase()}) is a decentralized digital asset currently positioned at #{assets?.indexOf(selectedAsset) + 1} in {t.ranking}. With a {t.milestone} of ${selectedAsset?.ath?.toLocaleString()} achieved on {selectedAsset?.ath_date ? format(new Date(selectedAsset.ath_date), 'MMM dd, yyyy') : 'recorded history'}. {t.intensity} {selectedAsset?.price_change_percentage_24h?.toFixed(2)}% {t.participation}</p></div>
+                <div className="relative z-10"><div className="flex items-center gap-3 mb-6 text-violet-300 font-bold text-xs uppercase"><Sparkles size={16} /><span>NEXUS AI INSIGHT</span></div><h3 className="text-2xl font-bold mb-4 text-white uppercase tracking-tight">{t.about} {selectedAsset?.name}</h3><p className="text-white/90 text-xl font-light leading-relaxed">{selectedAsset?.name} ({selectedAsset?.symbol?.toUpperCase()}) is a decentralized digital asset currently positioned at #{assets?.indexOf(selectedAsset) + 1} in {t.ranking}. With a {t.milestone} of ${selectedAsset?.ath?.toLocaleString()} achieved on {selectedAsset?.ath_date ? format(new Date(selectedAsset.ath_date), 'MMM dd, yyyy') : 'recorded history'}. {t.intensity} {selectedAsset?.price_change_percentage_24h?.toFixed(2)}% {t.participation}</p></div>
               </div>
             </div>
 
             <div className="xl:col-span-2 flex flex-col gap-12">
               <div>
-                <h3 className="text-white text-[11px] font-bold tracking-[0.3em] uppercase mb-8 flex items-center gap-2 opacity-40"><Activity size={16} /> {t.market_intensity}</h3>
+                <h3 className="text-white text-[11px] font-bold uppercase mb-8 flex items-center gap-2 opacity-40"><Activity size={16} /> {t.market_intensity}</h3>
                 <div className="bg-black/30 border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
                   <table className="w-full text-left border-collapse">
                     <thead><tr className="border-b border-white/10 bg-white/[0.03]"><th className="p-4 text-[9px] font-bold text-white uppercase">Ticker</th><th className="p-4 text-[9px] font-bold text-white uppercase text-right">Delta</th></tr></thead>
                     <tbody>
                       {assets?.slice(0, 15).map((asset) => (
                         <tr key={asset.id} onClick={() => setSelectedAsset(asset.id)} className={`border-b border-white/[0.03] last:border-0 hover:bg-violet-500/10 cursor-pointer transition-all ${selectedAssetId === asset.id ? 'bg-white/10' : ''}`}>
-                          <td className="p-4"><div className="font-bold text-sm text-white uppercase">{asset.symbol?.toUpperCase() || ''}</div><div className="text-[10px] text-white/30 truncate max-w-[80px]">${(asset.current_price || 0).toLocaleString()}</div></td>
+                          <td className="p-4"><div className="font-bold text-sm text-white uppercase">{asset.symbol?.toUpperCase() || ''}</div><div className="text-[11px] text-white font-normal">${(asset.current_price || 0).toLocaleString()}</div></td>
                           <td className="p-4 text-right"><div className={`inline-block font-bold text-[9px] px-2 py-1 rounded ${(asset.price_change_percentage_24h || 0) >= 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>{(asset.price_change_percentage_24h || 0) >= 0 ? '+' : ''}{(asset.price_change_percentage_24h || 0).toFixed(2)}%</div></td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                </div>
-              </div>
-              <div className="flex flex-col gap-6">
-                <h3 className="text-white text-[11px] font-bold tracking-[0.4em] uppercase mb-4 px-4 opacity-40 text-center">Liquidity</h3>
-                <div className="flex flex-col max-h-[400px] overflow-y-auto custom-scrollbar border border-white/5 rounded-2xl bg-black/20">
-                  {assets?.map((asset) => (
-                    <div key={asset.id} onClick={() => setSelectedAsset(asset.id)} className={`p-4 cursor-pointer flex justify-between items-center border-b border-white/[0.03] last:border-0 transition-all ${selectedAssetId === asset.id ? 'bg-white text-black' : 'hover:bg-white/5'}`}>
-                      <div className="flex items-center gap-3"><img src={asset.image} alt="" className="w-6 h-6 object-contain" /><div className={`font-bold text-xs tracking-tight ${selectedAssetId === asset.id ? 'text-black' : 'text-white'}`}>{asset.symbol?.toUpperCase() || ''}</div></div>
-                      <div className={`text-[10px] font-normal tabular-nums ${selectedAssetId === asset.id ? 'text-black' : 'text-white'}`}>${(asset.current_price || 0).toLocaleString()}</div>
-                    </div>
-                  ))}
                 </div>
               </div>
             </div>
@@ -239,9 +226,9 @@ export default function Dashboard() {
 
 function SidebarItem({ icon, label, active = false, expanded = false }: { icon: React.ReactNode; label: string; active?: boolean; expanded?: boolean }) {
   return (
-    <div className={`flex items-center gap-5 p-4 rounded-2xl cursor-pointer transition-all ${active ? 'bg-white text-black shadow-2xl' : 'text-white/30 hover:text-white hover:bg-white/5'}`}>
+    <div className={`flex items-center gap-5 p-4 rounded-xl cursor-pointer transition-all ${active ? 'bg-white text-black shadow-2xl shadow-white/10' : 'text-white/20 hover:text-white hover:bg-white/5'}`}>
       <div className="shrink-0">{icon}</div>
-      <AnimatePresence mode="wait">{expanded && ( <motion.span initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: 'auto' }} exit={{ opacity: 0, width: 0 }} className="text-base font-bold tracking-tight uppercase tracking-widest text-[10px] whitespace-nowrap">{label}</motion.span> )}</AnimatePresence>
+      <AnimatePresence mode="wait">{expanded && ( <motion.span initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: 'auto' }} exit={{ opacity: 0, width: 0, transition: { duration: 0.1 } }} className="text-sm font-bold tracking-tight uppercase text-[10px] whitespace-nowrap">{label}</motion.span> )}</AnimatePresence>
     </div>
   );
 }
@@ -249,7 +236,7 @@ function SidebarItem({ icon, label, active = false, expanded = false }: { icon: 
 function StatRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between items-center py-5 border-b border-white/5 last:border-0">
-      <span className="text-white text-[12px] font-black uppercase tracking-tight">{label}</span>
+      <span className="text-white text-[12px] font-bold uppercase">{label}</span>
       <span className="text-white text-2xl font-normal tabular-nums tracking-tighter leading-none">{value}</span>
     </div>
   );
