@@ -7,6 +7,7 @@ import {
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TrendingUp, Activity, ExternalLink, Info, ArrowUp, ArrowDown, Sparkles, LayoutDashboard, Wallet, Settings, Menu, RefreshCw } from 'lucide-react';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { exportToCSV } from '@/lib/utils';
 import { format, startOfDay, addHours, addDays, startOfMonth, addMonths, startOfYear, addYears } from 'date-fns';
 
@@ -224,9 +225,9 @@ export default function Dashboard() {
                       </button>
                     ))}
                   </div>
-                  <div className="text-[10px] font-bold text-violet-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                  <div className="flex items-center gap-3 text-[10px] font-bold text-violet-400 uppercase tracking-[0.2em]">
                     <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
-                    Verified Data Stream
+                    {historyError ? <span className="text-yellow-500">Mode: Proxy Sim</span> : <span>Mode: Live Feed</span>}
                   </div>
                 </div>
 
@@ -234,7 +235,7 @@ export default function Dashboard() {
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart 
                       data={history} 
-                      margin={{ top: 20, right: 10, left: 10, bottom: 60 }} // Extra bottom margin
+                      margin={{ top: 20, right: 10, left: 10, bottom: 60 }} 
                       onMouseMove={handleMouseMove}
                       onMouseLeave={() => setHoverData(null)}
                     >
@@ -270,11 +271,10 @@ export default function Dashboard() {
                         width={90}
                       />
                       
-                      {/* Crosshair System */}
                       <Tooltip 
                         isAnimationActive={false}
                         cursor={{ stroke: 'rgba(255,255,255,0.4)', strokeWidth: 1, strokeDasharray: '3 3' }}
-                        content={() => null} // Handled by overlay
+                        content={() => null} 
                       />
                       
                       {hoverData && (
@@ -294,7 +294,6 @@ export default function Dashboard() {
                     </AreaChart>
                   </ResponsiveContainer>
 
-                  {/* YAHOO AXIS BADGES */}
                   <AnimatePresence>
                     {hoverData && (
                       <>
@@ -351,7 +350,7 @@ export default function Dashboard() {
                         <tr key={asset.id} onClick={() => setSelectedAsset(asset.id)} className={`border-b border-white/[0.03] last:border-0 hover:bg-violet-500/10 cursor-pointer transition-colors ${selectedAssetId === asset.id ? 'bg-white/10' : ''}`}>
                           <td className="p-6">
                             <div className="font-bold text-sm text-white tracking-tighter">{asset.symbol?.toUpperCase() || ''}</div>
-                            <div className="text-[11px] text-white/30 truncate max-w-[100px]">{asset.name || ''}</div>
+                            <div className="text-[10px] text-white/30 truncate max-w-[100px]">{asset.name || ''}</div>
                           </td>
                           <td className="p-6 text-right font-normal text-sm tabular-nums">
                             ${(asset.current_price || 0) < 1 ? (asset.current_price || 0).toFixed(4) : (asset.current_price || 0).toLocaleString()}
@@ -394,7 +393,7 @@ export default function Dashboard() {
 
 function SidebarItem({ icon, label, active = false, expanded = false }: { icon: React.ReactNode; label: string; active?: boolean; expanded?: boolean }) {
   return (
-    <div className={`flex items-center gap-5 p-4 rounded-2xl cursor-pointer transition-all ${active ? 'bg-violet-600 text-white shadow-[0_0_30px_rgba(139,92,246,0.3)]' : 'text-white/30 hover:text-white hover:bg-white/5'}`}>
+    <div className={`flex items-center gap-5 p-4 rounded-2xl cursor-pointer transition-all ${active ? 'bg-violet-600 text-white shadow-2xl' : 'text-white/30 hover:text-white hover:bg-white/5'}`}>
       <div className="shrink-0">{icon}</div>
       {expanded && <span className="text-base font-bold tracking-tight">{label}</span>}
     </div>

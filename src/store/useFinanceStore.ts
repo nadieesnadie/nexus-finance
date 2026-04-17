@@ -60,7 +60,7 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
       );
       if (!response.ok) throw new Error('API Rate Limit. Running in Fallback Mode.');
       const data = await response.json();
-      
+
       if (!Array.isArray(data) || (data.length > 0 && typeof data[0].current_price !== 'number')) {
         throw new Error('Invalid API Response from Provider');
       }
@@ -124,7 +124,32 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
     const asset = get().assets.find(a => a.id === id);
     const symbol = asset ? asset.symbol.toUpperCase() : 'BTC';
     
-    // Función auxiliar para obtener de Binance
+    // Interpolation logic for exact Yahoo-style granularity
+    const interpolate = (prices: [number, number][], targetIntervalMs: number) => {
+      if (!prices || prices.length < 2) return prices;
+      const result: [number, number][] = [];
+      for (let i = 0; i < prices.length - 1; i++) {
+        const p1 = prices[i];
+        const p2 = prices[i + 1];
+        result.push(p1);
+        
+        const timeDiff = p2[0] - p1[0];
+        const steps = Math.floor(timeDiff / targetIntervalMs);
+        
+        if (steps > 1 && steps < 500) {
+          const timeStep = timeDiff / steps;
+          const priceStep = (p2[1] - p1[1]) / steps;
+          for (let j = 1; j < steps; j++) {
+            const jitter = priceStep * 0.00005 * (Math.random() - 0.5);
+            result.push([p1[0] + timeStep * j, p1[1] + (priceStep * j) + jitter]);
+          }
+        }
+      }
+      result.push(prices[prices.length - 1]);
+      return result;
+    };
+
+    // Helper: fetch from Binance
     const fetchFromBinance = async () => {
       let interval = '5m';
       let limit = 288;
@@ -135,68 +160,41 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
       else if (days === '180') { interval = '1d'; limit = 180; }
       else if (days === '365' || days === 'ytd') { interval = '1d'; limit = 365; }
       else if (days === '1825') { interval = '1w'; limit = 265; }
-      else if (days === 'max') { interval = '1w'; limit = 1000; } // Maximum possible limit for Binance
+      else if (days === 'max') { interval = '1w'; limit = 1000; }
 
       let binanceSymbol = `${symbol}USDT`;
       if (symbol === 'USDT') binanceSymbol = 'USDCUSDT'; 
       
-      const binanceResponse = await fetch(
+      const response = await fetch(
         `https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=${interval}&limit=${limit}`,
         { signal: abortController!.signal }
       );
 
-      if (!binanceResponse.ok) throw new Error('Binance Pair Not Found');
-
-      const binanceData = await binanceResponse.json();
-      return binanceData.map((p: any) => ({
+      if (!response.ok) throw new Error('Binance Pair Not Found');
+      const data = await response.json();
+      return data.map((p: any) => ({
         time: p[0],
         value: parseFloat(p[4])
       }));
     };
 
-    // Función auxiliar para obtener de CoinGecko
+    // Helper: fetch from CoinGecko
     const fetchFromCoinGecko = async () => {
-      const cgResponse = await fetch(
+      const response = await fetch(
         `https://api.coingecko.com/api/v3/coins/${id}/market_chart?vs_currency=usd&days=${daysParam}`,
         { signal: abortController!.signal }
       );
       
-      if (!cgResponse.ok) throw new Error('CoinGecko API Rate Limit');
-      
-      const cgData = await cgResponse.json();
-      if (!cgData || !Array.isArray(cgData.prices)) throw new Error('Format Error');
+      if (!response.ok) throw new Error('CoinGecko API Rate Limit');
+      const data = await response.json();
+      if (!data || !Array.isArray(data.prices)) throw new Error('Format Error');
 
-      let processedPrices = cgData.prices;
-      
-      const interpolate = (prices: [number, number][], targetIntervalMs: number) => {
-        if (!prices || prices.length < 2) return prices;
-        const result: [number, number][] = [];
-        for (let i = 0; i < prices.length - 1; i++) {
-          const p1 = prices[i];
-          const p2 = prices[i + 1];
-          result.push(p1);
-          
-          const timeDiff = p2[0] - p1[0];
-          const steps = Math.floor(timeDiff / targetIntervalMs);
-          
-          if (steps > 1 && steps < 100) {
-            const timeStep = timeDiff / steps;
-            const priceStep = (p2[1] - p1[1]) / steps;
-            for (let j = 1; j < steps; j++) {
-              const jitter = priceStep * 0.00005 * (Math.random() - 0.5);
-              result.push([p1[0] + timeStep * j, p1[1] + (priceStep * j) + jitter]);
-            }
-          }
-        }
-        result.push(prices[prices.length - 1]);
-        return result;
-      };
+      let prices = data.prices;
+      if (days === '1') prices = interpolate(prices, 60 * 1000);
+      else if (days === '5') prices = interpolate(prices, 10 * 60 * 1000);
+      else if (days === '30') prices = interpolate(prices, 60 * 60 * 1000);
 
-      if (days === '1') processedPrices = interpolate(cgData.prices, 60 * 1000);
-      else if (days === '5') processedPrices = interpolate(cgData.prices, 10 * 60 * 1000);
-      else if (days === '30') processedPrices = interpolate(cgData.prices, 60 * 60 * 1000);
-
-      return processedPrices.map((p: [number, number]) => ({
+      return prices.map((p: [number, number]) => ({
         time: p[0],
         value: p[1]
       }));
@@ -205,7 +203,7 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
     try {
       let formattedHistory;
 
-      // ENRUTAMIENTO INTELIGENTE: CoinGecko tiene la historia completa pre-2017. Binance es mejor para corto plazo.
+      // Smart routing
       if (days === '1825' || days === 'max') {
         try {
           formattedHistory = await fetchFromCoinGecko();
@@ -226,22 +224,36 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
     } catch (err: any) {
       if (err.name === 'AbortError') return;
       
-      // TERTIARY ENGINE: MATHEMATICAL SIMULATION
-      const basePrice = asset ? (asset.current_price || 1) : 1;
-      const fakeHistory = [];
-      const now = Date.now();
-      const daysNum = days === 'max' ? 365 * 5 : (parseInt(daysParam) || 30);
-      const points = 150;
-      const step = (daysNum * 24 * 60 * 60 * 1000) / points;
-      
-      for(let i=0; i<points; i++) {
-         fakeHistory.push({
-           time: now - (points - i) * step,
-           value: basePrice * (1 + (Math.sin(i / 5) * 0.05))
-         });
+      // FINAL FALLBACK: SPARKLINE (FOR 1D/7D) OR SIMULATION
+      if ((days === '1' || days === '5' || days === '7' || days === '30') && asset?.sparkline_in_7d) {
+         const sparkPrices = asset.sparkline_in_7d.price;
+         const points = days === '1' ? 24 : (days === '5' ? 120 : 168);
+         const slice = sparkPrices.slice(-points);
+         const now = Date.now();
+         const step = (parseInt(days) * 24 * 60 * 60 * 1000) / slice.length;
+         
+         const sparkHistory = slice.map((v, i) => ({
+           time: now - (slice.length - i) * step,
+           value: v
+         }));
+         
+         set({ history: sparkHistory, isHistoryLoading: false, historyError: 'Real-time Feed Busy. Showing Recent Activity.' });
+      } else {
+        const basePrice = asset ? (asset.current_price || 1) : 1;
+        const fakeHistory = [];
+        const now = Date.now();
+        const daysNum = days === 'max' ? 365 * 10 : (parseInt(daysParam) || 30);
+        const points = 150;
+        const step = (daysNum * 24 * 60 * 60 * 1000) / points;
+        
+        for(let i=0; i<points; i++) {
+           fakeHistory.push({
+             time: now - (points - i) * step,
+             value: basePrice * (1 + (Math.sin(i / 10) * 0.08) + (Math.random() * 0.02))
+           });
+        }
+        set({ history: fakeHistory, isHistoryLoading: false, historyError: 'Market Stream Offline. Displaying Simulation.' });
       }
-      
-      set({ history: fakeHistory, isHistoryLoading: false, historyError: err.message });
     }
   },
 
