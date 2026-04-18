@@ -6,24 +6,25 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, BarChart, Bar, LineChart, Line, Cell, ComposedChart
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
-import { TrendingUp, Activity, ExternalLink, Info, ArrowUp, ArrowDown, Sparkles, LayoutDashboard, Wallet, Settings, Menu, RefreshCw, ShieldCheck, DatabaseZap, ChartArea, ChartLine, ChartCandlestick, ChartBar, Globe } from 'lucide-react';
+import { TrendingUp, Activity, ExternalLink, Info, ArrowUp, ArrowDown, Sparkles, LayoutDashboard, Wallet, Settings, Menu, RefreshCw, ShieldCheck, DatabaseZap, ChartArea, ChartLine, ChartCandlestick, ChartBar, Globe, X } from 'lucide-react';
 import { exportToCSV } from '@/lib/utils';
 import { format, startOfDay, addHours, addDays, startOfMonth, addMonths, startOfYear, addYears } from 'date-fns';
 
 const translations = {
   en: {
-    terminal: 'Terminal', syncing: 'Syncing...', feed_error: 'Feed Error', feed_msg: 'Market data stream unavailable.', reset_conn: 'Reset', audit: 'Audit CSV', about: 'About', ranking: 'global market cap', milestone: 'historical milestone', intensity: 'Current intraday intensity shows a performance delta of', participation: 'with high institutional participation.', market_intensity: 'Market Intensity', liquidity: 'Market Liquidity (Top 50)', powered: 'Powered by',
-    stats: { mcap: 'Market Cap', supply: 'Circulating Supply', vol: 'Volume (24h)', total_supply: 'Total Supply', range: 'Day Range', ath: 'All-Time High', genesis: 'Genesis Date', fdv: 'Fully Diluted Val.' }
+    terminal: 'Terminal', syncing: 'Syncing...', feed_error: 'Feed Error', feed_msg: 'Market data stream unavailable.', reset_conn: 'Reset', audit: 'Audit CSV', about: 'About', ranking: 'global market cap', milestone: 'historical milestone', intensity: 'Current intraday intensity shows a performance delta of', participation: 'with high institutional participation.', market_intensity: 'Market Intensity', liquidity: 'Liquidity', powered: 'Powered by',
+    stats: { mcap: 'Market Cap', supply: 'Circ. Supply', vol: 'Vol (24h)', total_supply: 'Total Supply', range: 'Range', ath: 'ATH', genesis: 'Genesis', fdv: 'FDV' }
   },
   es: {
-    terminal: 'Terminal', syncing: 'Sincronizando...', feed_error: 'Error de Feed', feed_msg: 'Flujo de datos no disponible.', reset_conn: 'Reiniciar', audit: 'Auditar CSV', about: 'Sobre', ranking: 'capitalización global', milestone: 'hito histórico', intensity: 'La intensidad intradía muestra un delta de', participation: 'con alta participación institucional.', market_intensity: 'Intensidad de Mercado', liquidity: 'Liquidez de Mercado (Top 50)', powered: 'Potenciado por',
-    stats: { mcap: 'Cap. de Mercado', supply: 'Suministro Circ.', vol: 'Volumen (24h)', total_supply: 'Suministro Total', range: 'Rango del Día', ath: 'Máximo Histórico', genesis: 'Fecha Génesis', fdv: 'Valuación Diluida' }
+    terminal: 'Terminal', syncing: 'Sincronizando...', feed_error: 'Error de Feed', feed_msg: 'Flujo de datos no disponible.', reset_conn: 'Reiniciar', audit: 'Auditar CSV', about: 'Sobre', ranking: 'capitalización global', milestone: 'hito histórico', intensity: 'La intensidad intradía muestra un delta de', participation: 'con alta participación institucional.', market_intensity: 'Intensidad', liquidity: 'Liquidez', powered: 'Potenciado por',
+    stats: { mcap: 'Cap. Mercado', supply: 'Suministro', vol: 'Vol (24h)', total_supply: 'Suministro Tot.', range: 'Rango', ath: 'Máx. Hist.', genesis: 'Génesis', fdv: 'Val. Diluida' }
   }
 };
 
 export default function Dashboard() {
   const { assets, fetchAssets, loading, selectedAssetId, setSelectedAsset, history, setRange, currentRange, isHistoryLoading, error: storeError, historyError, chartType, setChartType, language, setLanguage } = useFinanceStore();
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [hoverData, setHoverData] = useState<any>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [isMounted, setIsMounted] = useState(false);
@@ -91,17 +92,6 @@ export default function Dashboard() {
     </div>
   );
 
-  if (!assets || assets.length === 0) return (
-    <div className="flex items-center justify-center h-screen bg-[#0a0518]">
-      <div className="flex flex-col items-center gap-6 p-12 bg-white/5 border border-white/10 rounded-3xl max-w-lg text-center backdrop-blur-xl">
-        <DatabaseZap size={48} className="text-red-500" />
-        <h2 className="text-white text-2xl font-bold tracking-tight uppercase">{t.feed_error}</h2>
-        <p className="text-white/60 text-sm leading-relaxed">{t.feed_msg}</p>
-        <button onClick={() => { window.location.reload(); }} className="mt-4 px-8 py-3 bg-white text-black rounded-xl font-bold text-xs uppercase tracking-widest hover:scale-105 transition-transform">{t.reset_conn}</button>
-      </div>
-    </div>
-  );
-
   const ranges = [ { label: '1D', value: '1' }, { label: '5D', value: '5' }, { label: '1M', value: '30' }, { label: '6M', value: '180' }, { label: 'YTD', value: 'ytd' }, { label: '1Y', value: '365' }, { label: '5Y', value: '1825' }, { label: 'ALL', value: 'max' } ];
   const chartModes = [ { id: 'mountain', icon: <ChartArea size={14} /> }, { id: 'line', icon: <ChartLine size={14} /> }, { id: 'baseline', icon: <Activity size={14} /> }, { id: 'candle', icon: <ChartCandlestick size={14} /> }, { id: 'bar', icon: <ChartBar size={14} /> } ];
 
@@ -109,7 +99,7 @@ export default function Dashboard() {
     <div className="flex h-screen bg-[#0a0518] text-white font-sans antialiased overflow-hidden selection:bg-violet-500/30">
       <div className="fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,#1e0c3a,transparent)] pointer-events-none" />
       
-      {/* SIDEBAR: Hidden on mobile, visible on LG */}
+      {/* SIDEBAR: DESKTOP */}
       <motion.aside onHoverStart={() => setIsSidebarExpanded(true)} onHoverEnd={() => setIsSidebarExpanded(false)} animate={{ width: isSidebarExpanded ? 260 : 80 }} transition={{ type: 'spring', stiffness: 300, damping: 30 }} className="h-full border-r border-white/10 bg-[#0e071f]/95 backdrop-blur-3xl flex flex-col py-8 px-4 z-50 relative hidden lg:flex shrink-0">
         <div className="flex items-center gap-4 mb-16 px-2 overflow-hidden">
           <div className="w-12 h-12 bg-violet-600 text-white flex items-center justify-center font-black text-2xl rounded shadow-[0_0_20px_rgba(255,255,255,0.2)]">N</div>
@@ -118,24 +108,56 @@ export default function Dashboard() {
         <nav className="flex flex-col gap-6 w-full px-2"><SidebarItem icon={<LayoutDashboard size={24} />} label={t.terminal} active expanded={isSidebarExpanded} /></nav>
       </motion.aside>
 
+      {/* MOBILE DRAWER: CURRENCY SELECTOR */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setIsMobileMenuOpen(false)} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] lg:hidden" />
+            <motion.div initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="fixed top-0 left-0 bottom-0 w-[80%] max-w-[300px] bg-[#0e071f] border-r border-white/10 z-[110] p-6 lg:hidden flex flex-col shadow-2xl">
+              <div className="flex justify-between items-center mb-10">
+                <div className="text-2xl font-black tracking-tighter text-white uppercase">NEXUS</div>
+                <button onClick={() => setIsMobileMenuOpen(false)} className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white"><X size={20} /></button>
+              </div>
+              <h3 className="text-violet-400 text-[10px] font-black uppercase tracking-[0.2em] mb-6 px-2">Market Stream</h3>
+              <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-2">
+                {assets?.map((asset) => (
+                  <div key={asset.id} onClick={() => { setSelectedAsset(asset.id); setIsMobileMenuOpen(false); }} className={`flex items-center gap-4 p-4 rounded-2xl transition-all ${selectedAssetId === asset.id ? 'bg-white text-black' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}>
+                    <img src={asset.image} alt="" className="w-8 h-8 object-contain" />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-sm truncate uppercase">{asset.symbol}</div>
+                      <div className="text-[10px] opacity-60 truncate">{asset.name}</div>
+                    </div>
+                    <div className="text-xs font-medium">${asset.current_price < 1 ? asset.current_price.toFixed(4) : asset.current_price.toLocaleString()}</div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       <div className="flex-1 overflow-y-auto custom-scrollbar relative z-10">
         <div className="p-4 sm:p-8 lg:p-10 max-w-[1700px] mx-auto pb-32">
           
           <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-12">
-            <div className="flex items-center gap-4 sm:gap-8">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white/5 border border-white/10 rounded-2xl p-3 sm:p-4 flex items-center justify-center shadow-2xl backdrop-blur-xl shrink-0">
+            <div className="flex items-center gap-4 sm:gap-8 w-full sm:w-auto">
+              {/* MOBILE MENU TRIGGER */}
+              <button onClick={() => setIsMobileMenuOpen(true)} className="lg:hidden w-12 h-12 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center text-white mr-2 shrink-0">
+                <Menu size={24} />
+              </button>
+              
+              <div className="w-14 h-14 sm:w-20 sm:h-20 bg-white/5 border border-white/10 rounded-2xl p-3 sm:p-4 flex items-center justify-center shadow-2xl backdrop-blur-xl shrink-0">
                 {selectedAsset?.image && <img src={selectedAsset.image} alt="" className="w-full h-full object-contain" />}
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-3 sm:gap-5 flex-wrap">
-                  <h1 className="text-3xl sm:text-5xl font-normal text-white tracking-tight leading-none truncate">{selectedAsset?.name || t.syncing}</h1>
-                  <span className="text-lg sm:text-2xl text-violet-400/40 font-bold uppercase">{selectedAsset?.symbol || '...'}</span>
-                  <a href={`https://finance.yahoo.com/quote/${selectedAsset?.symbol?.toUpperCase()}-USD`} target="_blank" className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/5 flex items-center justify-center text-white/20 hover:text-violet-400 hover:bg-white/10 transition-all"><ExternalLink size={16} /></a>
+                  <h1 className="text-2xl sm:text-5xl font-normal text-white tracking-tight leading-none truncate">{selectedAsset?.name || t.syncing}</h1>
+                  <span className="text-sm sm:text-2xl text-white/40 font-bold uppercase shrink-0">{selectedAsset?.symbol}</span>
                 </div>
                 <div className="flex items-center gap-4 sm:gap-8 mt-2 sm:mt-4">
-                  <span className="text-3xl sm:text-5xl font-normal text-white tabular-nums tracking-tighter">${(selectedAsset?.current_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 })}</span>
-                  <div className={`flex items-center gap-1 sm:gap-2 text-lg sm:text-2xl font-medium px-3 sm:px-4 py-0.5 sm:py-1 rounded-xl ${(selectedAsset?.price_change_percentage_24h || 0) >= 0 ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10'}`}>
-                    {(selectedAsset?.price_change_percentage_24h || 0) >= 0 ? <ArrowUp size={20} /> : <ArrowDown size={20} />}
+                  <span className="text-2xl sm:text-5xl font-normal text-white tabular-nums tracking-tighter">${(selectedAsset?.current_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 })}</span>
+                  <div className={`flex items-center gap-1 sm:gap-2 text-base sm:text-2xl font-medium px-2 sm:px-4 py-0.5 sm:py-1 rounded-xl ${(selectedAsset?.price_change_percentage_24h || 0) >= 0 ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10'}`}>
+                    {(selectedAsset?.price_change_percentage_24h || 0) >= 0 ? <ArrowUp size={18} /> : <ArrowDown size={18} />}
                     {Math.abs(selectedAsset?.price_change_percentage_24h || 0).toFixed(2)}%
                   </div>
                 </div>
@@ -151,11 +173,10 @@ export default function Dashboard() {
           </header>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 text-white">
-            
             <div className="lg:col-span-9 flex flex-col gap-8 lg:gap-12"> 
               
               <div className="bg-black/40 border border-white/10 rounded-[2rem] sm:rounded-[3.5rem] p-4 sm:p-10 min-h-[500px] sm:min-h-[600px] flex flex-col relative overflow-visible shadow-2xl backdrop-blur-md">
-                {isHistoryLoading && (<div className="absolute inset-0 bg-[#0a0518]/90 backdrop-blur-xl z-30 flex items-center justify-center flex-col gap-6 rounded-[2rem] sm:rounded-[3.5rem]"><RefreshCw className="animate-spin text-violet-500" size={40} /><p className="text-violet-200 text-[10px] font-black tracking-[0.5em] uppercase animate-pulse">{t.syncing}</p></div>)}
+                {isHistoryLoading && (<div className="absolute inset-0 bg-[#0a0518]/90 backdrop-blur-xl z-30 flex items-center justify-center flex-col gap-6 rounded-[2rem] sm:rounded-[3.5rem]"><RefreshCw className="animate-spin text-violet-500" size={40} /><p className="text-violet-200 text-[10px] font-black uppercase animate-pulse">{t.syncing}</p></div>)}
                 {!isHistoryLoading && historyError && (<div className="absolute inset-0 z-20 flex items-center justify-center flex-col gap-4"><DatabaseZap size={32} className="text-white/20" /><p className="text-white/40 font-bold uppercase tracking-[0.3em] text-sm text-center px-4">volume not available</p></div>)}
                 
                 <div className="flex flex-col sm:flex-row justify-between items-center mb-6 sm:mb-10 z-10 gap-6">
@@ -177,8 +198,24 @@ export default function Dashboard() {
                         <linearGradient id="strokeBaseline" x1="0" y1="0" x2="0" y2="1"><stop offset={`${yDomainInfo.off}%`} stopColor="#22c55e" stopOpacity={1}/><stop offset={`${yDomainInfo.off}%`} stopColor="#ef4444" stopOpacity={1}/></linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="0" vertical={true} horizontal={true} stroke="rgba(255,255,255,0.03)" />
-                      <XAxis dataKey="time" type="number" domain={['dataMin', 'dataMax']} ticks={xTicks} tickFormatter={(t) => format(new Date(t), 'HH:mm')} axisLine={false} tickLine={false} tick={{ fill: '#FFFFFF', fontSize: 10, opacity: 0.3 }} dy={20} />
-                      <YAxis domain={[yDomainInfo.min, yDomainInfo.max]} orientation="right" axisLine={false} tickLine={false} tick={{ fill: '#FFFFFF', fontSize: 10, opacity: 0.3 }} tickFormatter={(val) => val.toLocaleString()} width={80} />
+                      <XAxis 
+                        dataKey="time" 
+                        type="number" 
+                        domain={['dataMin', 'dataMax']} 
+                        ticks={xTicks} 
+                        tickFormatter={(t) => {
+                          const date = new Date(t);
+                          if (currentRange === '1' || currentRange === '5') return format(date, 'HH:mm');
+                          if (currentRange === '30' || currentRange === '180') return format(date, 'MMM dd');
+                          if (currentRange === '365' || currentRange === 'ytd') return format(date, 'MMM yyyy');
+                          return format(date, 'yyyy');
+                        }} 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tick={{ fill: '#FFFFFF', fontSize: 10, opacity: 0.4, fontWeight: 700 }} 
+                        dy={20} 
+                      />
+                      <YAxis domain={[yDomainInfo.min, yDomainInfo.max]} orientation="right" axisLine={false} tickLine={false} tick={{ fill: '#FFFFFF', fontSize: 10, opacity: 0.3 }} tickFormatter={(val) => val.toLocaleString()} width={70} />
                       <Tooltip isAnimationActive={false} cursor={{ stroke: 'rgba(255,255,255,0.4)', strokeWidth: 1, strokeDasharray: '3 3' }} content={() => null} />
                       {(chartType === 'baseline' || hoverData) && ( <ReferenceLine y={hoverData ? hoverData.close : baselineValue} stroke="rgba(255,255,255,0.3)" strokeDasharray="3 3" /> )}
                       {chartType === 'mountain' && <Area isAnimationActive={false} type="monotone" dataKey="close" stroke={chartColor} strokeWidth={2} fillOpacity={0.2} fill={chartColor} activeDot={{ r: 4, fill: '#FFF' }} />}
@@ -192,8 +229,13 @@ export default function Dashboard() {
                   <AnimatePresence>
                     {hoverData && (
                       <>
-                        <div className="absolute left-1/2 -translate-x-1/2 bottom-[5px] sm:bottom-[10px] bg-white text-black px-4 sm:px-6 py-1.5 sm:py-2 rounded-full font-black text-[9px] sm:text-xs z-40 whitespace-nowrap shadow-2xl border border-white/10" style={{ left: mousePos.x }}>{format(new Date(hoverData.time), 'MMM dd • HH:mm:ss')}</div>
-                        <div className="absolute right-0 bg-black text-white px-2 py-1 rounded-l font-bold text-[9px] sm:text-[10px] z-40 tabular-nums border border-white/10 shadow-2xl" style={{ top: mousePos.y - 12 }}>${(hoverData.close || 0).toLocaleString(undefined, { maximumFractionDigits: 4 })}</div>
+                        {/* ADAPTIVE LARGE BADGES FOR MOBILE TOUCH */}
+                        <div className="absolute left-1/2 -translate-x-1/2 bottom-[10px] sm:bottom-[15px] bg-white text-black px-6 sm:px-8 py-2 sm:py-3 rounded-full font-black text-xs sm:text-sm z-40 whitespace-nowrap shadow-[0_0_40px_rgba(255,255,255,0.5)] border border-white/10" style={{ left: mousePos.x }}>
+                          {format(new Date(hoverData.time), currentRange === '1' ? 'HH:mm:ss' : 'MMM dd, yyyy • HH:mm')}
+                        </div>
+                        <div className="absolute right-0 bg-white text-black px-3 py-2 rounded-l font-black text-xs sm:text-sm z-40 tabular-nums shadow-2xl border border-white/10" style={{ top: mousePos.y - 15 }}>
+                          ${(hoverData.close || 0).toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                        </div>
                       </>
                     )}
                   </AnimatePresence>
@@ -219,8 +261,8 @@ export default function Dashboard() {
             </div>
 
             <div className="lg:col-span-3 flex flex-col gap-8 lg:gap-12">
-              <div>
-                <h3 className="text-violet-300 text-xs font-bold uppercase mb-6 sm:mb-8 flex items-center gap-2"><Activity size={16} /> {t.market_intensity}</h3>
+              <div className="hidden lg:block">
+                <h3 className="text-violet-300 text-xs font-bold uppercase mb-8 flex items-center gap-2"><Activity size={16} /> {t.market_intensity}</h3>
                 <div className="bg-black/30 border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
                   <table className="w-full text-left border-collapse">
                     <thead><tr className="border-b border-white/10 bg-white/[0.03]"><th className="p-4 text-[9px] font-bold text-white uppercase">Ticker</th><th className="p-4 text-[9px] font-bold text-white uppercase text-right">Delta</th></tr></thead>
