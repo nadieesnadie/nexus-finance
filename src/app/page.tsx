@@ -145,7 +145,7 @@ export default function Dashboard() {
         )}
       </AnimatePresence>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar relative z-10">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar relative z-10">
         <div className="p-4 sm:p-8 lg:p-10 max-w-[1700px] mx-auto pb-32">
           
           <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-12">
@@ -188,7 +188,7 @@ export default function Dashboard() {
                   </div>
                   <div className="hidden sm:flex items-center gap-3 text-[11px] font-black text-green-400 uppercase tracking-widest bg-green-500/10 px-4 py-2 rounded-full border border-green-500/20 shadow-2xl"><span>Feed Active</span></div>
                 </div>
-                <div className="flex-1 w-full min-h-[350px] sm:min-h-[500px] cursor-crosshair relative">
+                <div className="flex-1 w-full min-h-[350px] sm:min-h-[500px] cursor-crosshair relative touch-none overflow-hidden">
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={history} margin={{ top: 10, right: 0, left: -20, bottom: 60 }} onMouseMove={handleMouseMove} onMouseLeave={() => setHoverData(null)}>
                       <defs>
